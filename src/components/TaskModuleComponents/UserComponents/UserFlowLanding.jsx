@@ -1,279 +1,3 @@
-// import React, { useEffect, useState } from 'react';
-// import { useNavigate } from 'react-router-dom';
-// import { useAuth } from '../../context/AuthContext';
-// import Logo from '../../../../assets/Logo.png';
- 
-// const LandingPage = () => {
-//   const { isAuthenticated, isInitialized, authState, getPrimaryRole } = useAuth();
-//   const navigate = useNavigate();
-//   const [mockTaskCount, setMockTaskCount] = useState(10);
-//   const [isVisible, setIsVisible] = useState(false);
-//   const [currentFeature, setCurrentFeature] = useState(0);
- 
-//   // Simulate real-time task updates
-//   useEffect(() => {
-//     const interval = setInterval(() => {
-//       setMockTaskCount((prev) => prev + Math.floor(Math.random() * 3));
-//     }, 5000);
-//     return () => clearInterval(interval);
-//   }, []);
- 
-//   // Animate elements on load
-//   useEffect(() => {
-//     setIsVisible(true);
-   
-//     // Cycle through features for attention
-//     const featureInterval = setInterval(() => {
-//       setCurrentFeature((prev) => (prev + 1) % 3);
-//     }, 3000);
-   
-//     return () => clearInterval(featureInterval);
-//   }, []);
- 
-//   // Redirect authenticated users to their dashboard
-//   useEffect(() => {
-//     if (isAuthenticated && isInitialized && authState === 'authenticated') {
-//       const primaryRole = getPrimaryRole();
-//       const navigationMap = {
-//         admin: '/admin',
-//         manager: '/manager',
-//         user: '/admin',
-//       };
-//       const destination = navigationMap[primaryRole] || '/dashboard';
-//       navigate(destination, { replace: true });
-//     }
-//   }, [isAuthenticated, isInitialized, authState, getPrimaryRole, navigate]);
- 
-//   // Microsoft logo component
-//   const MicrosoftIcon = () => (
-//     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-//       <path d="M11.4 3H3v8.4h8.4V3z" fill="#F25022"/>
-//       <path d="M21 3h-8.4v8.4H21V3z" fill="#7FBA00"/>
-//       <path d="M11.4 12.6H3V21h8.4v-8.4z" fill="#00A4EF"/>
-//       <path d="M21 12.6h-8.4V21H21v-8.4z" fill="#FFB900"/>
-//     </svg>
-//   );
- 
-//   const features = [
-//     {
-//       icon: (
-//         <svg className="w-8 h-8 text-white mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-//         </svg>
-//       ),
-//       title: "Real-Time Task Management",
-//       description: "Track and update tasks instantly with real-time notifications and seamless collaboration.",
-//       color: "from-purple-500 to-pink-500"
-//     },
-//     {
-//       icon: (
-//         <svg className="w-8 h-8 text-white mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-//         </svg>
-//       ),
-//       title: "Role-Based Access Control",
-//       description: "Customized dashboards and permissions for admins, managers, and team members.",
-//       color: "from-blue-500 to-cyan-500"
-//     },
-//     {
-//       icon: (
-//         <svg className="w-8 h-8 text-white mb-4 mx-auto" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-//         </svg>
-//       ),
-//       title: "Enterprise Security",
-//       description: "AES-encrypted data protection with advanced security measures and compliance.",
-//       color: "from-green-500 to-teal-500"
-//     }
-//   ];
- 
-//   return (
-//     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-purple-50 overflow-hidden">
-//       {/* Animated Background Elements */}
-//       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-//         <div className="absolute -top-40 -right-40 w-80 h-80 bg-gradient-to-br from-purple-400/20 to-pink-400/20 rounded-full blur-3xl animate-pulse"></div>
-//         <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-gradient-to-br from-blue-400/20 to-cyan-400/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-//         <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-gradient-to-br from-indigo-400/10 to-purple-400/10 rounded-full blur-3xl animate-pulse delay-2000"></div>
-//       </div>
- 
-//       {/* Navigation Bar */}
-//       <nav className={`relative z-10 bg-white/80 backdrop-blur-md shadow-lg border-b border-white/20 py-4 px-6 flex justify-between items-center transition-all duration-1000 ${isVisible ? 'translate-y-0 opacity-100' : '-translate-y-full opacity-0'}`}>
-//         <div className="flex items-center gap-3 group">
-//           <div className="relative">
-//             <img src={Logo} alt="Quadrant Technologies Logo" className="w-12 h-12 rounded-full object-cover shadow-lg group-hover:scale-110 transition-transform duration-300" />
-//             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-20 transition-opacity duration-300"></div>
-//           </div>
-//           <span className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
-//             Quadrant Technologies
-//           </span>
-//         </div>
-//         <button
-//           onClick={() => navigate('/login')}
-//           className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-full font-medium flex items-center gap-2 hover:from-purple-700 hover:to-pink-700 transition-all duration-300 transform hover:scale-105 hover:shadow-xl group"
-//         >
-//           <MicrosoftIcon />
-//           <span className="group-hover:tracking-wide transition-all duration-300">Sign In</span>
-//         </button>
-//       </nav>
- 
-//       {/* Hero Section */}
-//       <div className="relative z-10 flex-1 flex items-center justify-center px-4 py-12">
-//         <div className={`bg-white/70 backdrop-blur-xl rounded-3xl shadow-2xl p-12 w-full max-w-[700px] text-center border border-white/20 transition-all duration-1000 delay-300 ${isVisible ? 'translate-y-0 opacity-100 scale-100' : 'translate-y-10 opacity-0 scale-95'}`}>
-//           <div className="w-[100px] h-[100px] mx-auto mb-8 rounded-full flex items-center justify-center relative group">
-//             <img
-//               src={Logo}
-//               alt="Quadrant Technologies Logo"
-//               className="rounded-full w-full h-full object-cover shadow-2xl group-hover:scale-110 transition-transform duration-500"
-//             />
-//             <div className="absolute inset-0 rounded-full bg-gradient-to-r from-purple-500 to-pink-500 opacity-0 group-hover:opacity-30 transition-opacity duration-500 animate-pulse"></div>
-//           </div>
-         
-//           <h1 className="text-4xl md:text-5xl font-bold mb-6 leading-tight">
-//             <span className="bg-gradient-to-r from-purple-600 via-pink-600 to-blue-600 bg-clip-text text-transparent animate-pulse">
-//               Welcome to the Future
-//             </span>
-//             <br />
-//             <span className="text-gray-800">of Work Management</span>
-//           </h1>
-         
-//           <p className="text-xl text-gray-600 mb-10 leading-relaxed max-w-md mx-auto">
-//             Revolutionize your workflow with AI-powered task management, real-time collaboration, and enterprise-grade security.
-//           </p>
-         
-//           <div className="space-y-4">
-//             <button
-//               onClick={() => navigate('/login')}
-//               className="w-full bg-gradient-to-r from-purple-600 to-pink-600 text-white py-4 px-8 rounded-full font-semibold flex items-center justify-center gap-3 hover:from-purple-700 hover:to-pink-700 transition-all duration-500 transform hover:scale-105 hover:shadow-2xl group relative overflow-hidden"
-//               aria-label="Sign in with Microsoft"
-//             >
-//               <div className="absolute inset-0 bg-gradient-to-r from-pink-600 to-purple-600 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
-//               <MicrosoftIcon />
-//               <span className="relative z-10 group-hover:tracking-wide transition-all duration-300">
-//                 Get Started with Microsoft
-//               </span>
-//               <svg className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform duration-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-//                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />
-//               </svg>
-//             </button>
-           
-//             <div className="flex items-center justify-center gap-6 text-sm text-gray-500">
-//               <div className="flex items-center gap-2">
-//                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-//                 <span>99.9% Uptime</span>
-//               </div>
-//               <div className="flex items-center gap-2">
-//                 <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse delay-200"></div>
-//                 <span>Enterprise Ready</span>
-//               </div>
-//               <div className="flex items-center gap-2">
-//                 <div className="w-2 h-2 bg-purple-500 rounded-full animate-pulse delay-500"></div>
-//                 <span>24/7 Support</span>
-//               </div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
- 
-//       {/* Features Section */}
-//       <div className="relative z-10 bg-gradient-to-r from-purple-900/5 to-pink-900/5 py-20 px-4">
-//         <div className="max-w-6xl mx-auto">
-//           <div className={`text-center mb-16 transition-all duration-1000 delay-500 ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}>
-//             <h2 className="text-3xl md:text-4xl font-bold text-gray-800 mb-4">
-//               Why Choose <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">Quadrant?</span>
-//             </h2>
-//             <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-//               Experience the next generation of productivity tools designed for modern teams
-//             </p>
-//           </div>
-         
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-//             {features.map((feature, index) => (
-//               <div
-//                 key={index}
-//                 className={`group relative overflow-hidden bg-white/80 backdrop-blur-md p-8 rounded-2xl shadow-xl border border-white/20 hover:shadow-2xl transition-all duration-500 transform hover:scale-105 hover:-translate-y-2 ${currentFeature === index ? 'ring-2 ring-purple-500 scale-105' : ''} ${isVisible ? 'translate-y-0 opacity-100' : 'translate-y-10 opacity-0'}`}
-//                 style={{ transitionDelay: `${700 + index * 200}ms` }}
-//               >
-//                 <div className={`absolute inset-0 bg-gradient-to-br ${feature.color} opacity-0 group-hover:opacity-10 transition-opacity duration-500`}></div>
-               
-//                 <div className={`w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br ${feature.color} flex items-center justify-center shadow-lg group-hover:scale-110 transition-transform duration-300`}>
-//                   {feature.icon}
-//                 </div>
-               
-//                 <h3 className="text-xl font-bold text-gray-800 mb-4 group-hover:text-purple-600 transition-colors duration-300">
-//                   {feature.title}
-//                 </h3>
-               
-//                 <p className="text-gray-600 leading-relaxed group-hover:text-gray-700 transition-colors duration-300">
-//                   {feature.description}
-//                 </p>
-               
-//                 <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 to-pink-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-500 origin-left"></div>
-//               </div>
-//             ))}
-//           </div>
-//         </div>
-//       </div>
- 
-//       {/* Real-Time Ticker */}
-//       <div className="fixed bottom-6 right-6 z-50">
-//         <div className="bg-gradient-to-r from-purple-600 to-pink-600 text-white py-3 px-6 rounded-full shadow-2xl flex items-center gap-3 animate-bounce">
-//           <div className="w-2 h-2 bg-white rounded-full animate-pulse"></div>
-//           <span className="font-medium">{mockTaskCount} tasks updated</span>
-//           <div className="w-2 h-2 bg-white rounded-full animate-pulse delay-500"></div>
-//         </div>
-//       </div>
- 
-//       {/* Stats Section */}
-//       <div className="relative z-10 bg-gradient-to-r from-gray-900 to-purple-900 py-16 px-4">
-//         <div className="max-w-4xl mx-auto text-center">
-//           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-//             <div className="text-white">
-//               <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-//                 10K+
-//               </div>
-//               <div className="text-gray-300">Active Users</div>
-//             </div>
-//             <div className="text-white">
-//               <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 to-cyan-400 bg-clip-text text-transparent">
-//                 1M+
-//               </div>
-//               <div className="text-gray-300">Tasks Completed</div>
-//             </div>
-//             <div className="text-white">
-//               <div className="text-4xl font-bold mb-2 bg-gradient-to-r from-green-400 to-teal-400 bg-clip-text text-transparent">
-//                 99.9%
-//               </div>
-//               <div className="text-gray-300">Uptime</div>
-//             </div>
-//           </div>
-//         </div>
-//       </div>
- 
-//       {/* Footer */}
-//       <footer className="relative z-10 bg-white/80 backdrop-blur-md py-8 px-4 text-center border-t border-white/20">
-//         <div className="max-w-4xl mx-auto">
-//           <p className="text-gray-600 mb-4">
-//             &copy; 2025 Quadrant Technologies. Empowering teams worldwide.
-//           </p>
-//           <div className="flex justify-center gap-6 text-sm">
-//             <a href="/terms" className="text-gray-500 hover:text-purple-600 transition-colors duration-300 hover:underline">
-//               Terms of Service
-//             </a>
-//             <a href="/privacy" className="text-gray-500 hover:text-purple-600 transition-colors duration-300 hover:underline">
-//               Privacy Policy
-//             </a>
-//             <a href="/contact" className="text-gray-500 hover:text-purple-600 transition-colors duration-300 hover:underline">
-//               Contact Us
-//             </a>
-//           </div>
-//         </div>
-//       </footer>
-//     </div>
-//   );
-// };
- 
-// export default LandingPage;
- 
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -365,7 +89,24 @@ const LandingPage = () => {
       navigate(destination, { replace: true });
     }
   }, [isAuthenticated, isInitialized, authState, getPrimaryRole, navigate]);
- 
+//  useEffect(() => {
+//     if (isAuthenticated && isInitialized && authState === 'authenticated') {
+//       const userDepartmentData = localStorage.getItem('userDepartmentData');
+//       if (!userDepartmentData) {
+//         // Navigate to DepartmentSelector with replace to ensure clean history
+//         navigate('/department-selector', { replace: true });
+//       } else {
+//         const primaryRole = getPrimaryRole();
+//         const navigationMap = {
+//           admin: '/admin',
+//           manager: '/manager',
+//           user: '/tasks',
+//         };
+//         const destination = navigationMap[primaryRole] || '/dashboard';
+//         navigate(destination, { replace: true });
+//       }
+//     }
+//   }, [isAuthenticated, isInitialized, authState, getPrimaryRole, navigate, Users]);
   // Microsoft Icon
   const MicrosoftIcon = () => (
     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -820,4 +561,3 @@ const LandingPage = () => {
 };
  
 export default LandingPage;
- 

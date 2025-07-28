@@ -1,7 +1,5 @@
-
 // import React, { useState, useEffect, useRef } from 'react';
-// import { HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
-// import { parseISO, addHours } from 'date-fns';
+// import { HubConnectionBuilder, LogLevel, HubConnectionState } from '@microsoft/signalr';
 // import Button from '../../common-components/Button';
 // import SearchBar from '../../common-components/SearchBar';
 // import { BadgePlus, X, FilterIcon, CalendarRange, List, Kanban, GitBranch, Bell, User, MessageCircle, Clock, CheckCircle2, Eye } from 'lucide-react';
@@ -14,6 +12,10 @@
 // import axios from 'axios';
 // import { useAuth } from '../../context/AuthContext';
 // import { useNavigate } from 'react-router-dom';
+// import CryptoJS from 'crypto-js';
+// import { parseISO, addHours, subDays } from 'date-fns';
+// import { decryptString } from '../../services/decrypt';
+// import { fetchEncryptionKeys } from '../../services/apiClient';
 
 // function UserView() {
 //   const navigate = useNavigate();
@@ -31,22 +33,24 @@
 //     dueDate: '',
 //     assignedTo: '',
 //     hasSubtasks: null,
-//     searchTerm: '',
+//     searchTerm: ''
 //   });
 //   const [filterCount, setFilterCount] = useState(0);
 //   const [refreshTrigger, setRefreshTrigger] = useState(0);
 //   const [currentPage, setCurrentPage] = useState(1);
-//   const tasksPerPage = 5;
 //   const [paginationData, setPaginationData] = useState({
 //     totalCount: 0,
 //     pageNumber: 1,
-//     pageSize: tasksPerPage,
+//     pageSize: 5,
 //     totalPages: 1,
 //     hasPreviousPage: false,
 //     hasNextPage: false,
 //   });
+//   const tasksPerPage = 5;
+//   // Notification states
 //   const [notifications, setNotifications] = useState([]);
 //   const [notificationHistory, setNotificationHistory] = useState([]);
+//   const [queuedNotifications, setQueuedNotifications] = useState([]);
 //   const [showNotifications, setShowNotifications] = useState(false);
 //   const [showHistory, setShowHistory] = useState(false);
 //   const [unreadCount, setUnreadCount] = useState(0);
@@ -63,6 +67,12 @@
 //     const saved = localStorage.getItem('notificationSettings');
 //     return saved ? JSON.parse(saved) : { soundEnabled: true, toastDuration: 5000 };
 //   });
+//   // Encryption states
+//   const [aesKey, setAesKey] = useState(null);
+//   const [aesIV, setAesIV] = useState(null);
+//   const [keyError, setKeyError] = useState(null);
+//   const [isKeysFetched, setIsKeysFetched] = useState(false);
+
 //   const filterButtonRef = useRef(null);
 //   const notificationPanelRef = useRef(null);
 //   const socketRef = useRef(null);
@@ -72,33 +82,47 @@
 //   const API_ENDPOINT = 'http://localhost:5181/api/Task';
 //   const SUBTASK_ENDPOINT = 'http://localhost:5181/api/SubTask';
 //   const FEEDBACK_ENDPOINT = 'http://localhost:5181/api/Feedback';
-//   const USER_ENDPOINT = 'http://localhost:5181/api/User';
+//   const USER_ENDPOINT = 'http://localhost:5181/api/User/user1';
+//   const ENCRYPTION_KEYS_ENDPOINT = 'http://localhost:5181/api/Encryption/keys';
 //   const SOCKET_URL = 'http://localhost:5181';
 
+//   // Save notification settings
 //   const saveNotificationSettings = (settings) => {
 //     setNotificationSettings(settings);
 //     localStorage.setItem('notificationSettings', JSON.stringify(settings));
 //   };
-
-//   const loadNotificationsFromStorage = () => {
-//     const stored = localStorage.getItem('notifications');
-//     return stored ? JSON.parse(stored) : [];
-//   };
-
-//   const saveNotificationsToStorage = (notifications) => {
-//     localStorage.setItem('notifications', JSON.stringify(notifications));
-//   };
-
-//   const loadNotificationHistoryFromStorage = () => {
-//     const stored = localStorage.getItem('notificationHistory');
-//     return stored ? JSON.parse(stored) : [];
-//   };
-
-//   const saveNotificationHistoryToStorage = (history) => {
-//     localStorage.setItem('notificationHistory', JSON.stringify(history));
-//   };
-
-//   const makeAuthenticatedRequest = async (url, method = 'GET', data = null) => {
+// useEffect(() => {
+//     const fetchData = async () => {
+//       try {
+//         console.log('Starting to fetch encryption keys...');
+//         try {
+//           const keys = await fetchEncryptionKeys();
+//           console.log('Keys fetched:', keys);
+//           if (keys && keys.aesKey && keys.aesIV) {
+//             setAesKey(keys.aesKey);
+//             setAesIV(keys.aesIV);
+//             console.log('Keys set successfully');
+//           } else {
+//             throw new Error('Invalid keys structure');
+//           }
+//         } catch (keyError) {
+//           console.error('Failed to fetch encryption keys:', keyError);
+//           setKeyError(keyError.message);
+//         }
+        
+//         if (!user?.id) {
+//           console.error('User ID missing');
+          
+//           return;
+//         }
+//       } catch (error) {
+//         console.error('Error in fetchData:', error);
+        
+//       }
+//     };
+//     fetchData();
+//   }, [user?.id]);
+//   const makeAuthenticatedRequest = async (url, method = 'GET', data = null, params = null) => {
 //     try {
 //       const token = await acquireToken('api');
 //       if (!token) throw new Error('Failed to acquire authentication token');
@@ -116,11 +140,17 @@
 //         config.data = data;
 //       }
 
+//       if (params) {
+//         config.params = Object.fromEntries(
+//           Object.entries(params).filter(([_, value]) => value !== null && value !== '' && value !== undefined)
+//         );
+//       }
+
 //       const response = await axios(config);
 //       return response.data;
 //     } catch (error) {
+//       console.error(`Error in request to ${url}:`, error);
 //       if (error.response?.status === 401) {
-//         console.error('Authentication failed. Token may be expired.');
 //         throw new Error('Authentication failed. Please try logging in again.');
 //       }
 //       throw error;
@@ -128,60 +158,138 @@
 //   };
 
 //   const fetchManagerName = async (managerId) => {
-//     if (!managerId) return 'Unknown Manager';
-//     if (managerNames[managerId]) return managerNames[managerId];
+//     if (!managerId) {
+//       console.warn('No managerId provided');
+//       return 'Unknown Managerss';
+//     }
+
+//     if (managerNames[managerId]) {
+//       console.log('Using cached manager name for ID:', managerId, managerNames[managerId]);
+//       return managerNames[managerId];
+//     }
+
+//     if (!isKeysFetched) {
+//       console.warn('Encryption keys not fetched, isKeysFetched:', isKeysFetched, 'keyError:', keyError);
+//       return keyError ? 'Unknown Manager' : 'Fetching...';
+//     }
 
 //     try {
 //       const response = await makeAuthenticatedRequest(`${USER_ENDPOINT}/${managerId}`);
-//       const name = response?.name || 'Unknown Manager';
+//       console.log('Manager API response:', JSON.stringify(response, null, 2));
+
+//       // Helper to extract name from various formats
+//       const extractName = (data) => {
+//         if (!data) return null;
+//         if (typeof data === 'string') return data;
+//         if (typeof data === 'object') {
+//           return (
+//             data.fullName ||
+//             data.name ||
+//             data.Name ||
+//             data.username ||
+//             (data.first && data.last ? `${data.first} ${data.last}` : null)
+//           );
+//         }
+//         return null;
+//       };
+
+//       let encryptedName;
+//       if (Array.isArray(response)) {
+//         console.log('Response is an array, checking first element:', response[0]);
+//         encryptedName = extractName(response[0]);
+//       } else {
+//         encryptedName = extractName(response);
+//       }
+
+//       if (!encryptedName) {
+//         console.error('No name field found in response:', response);
+//         throw new Error('No name field in response');
+//       }
+
+//       console.log('Encrypted name:', encryptedName);
+//       const name = decryptString(encryptedName, aesKey, aesIV);
+//       console.log('Decrypted name:', name);
+
 //       setManagerNames((prev) => ({ ...prev, [managerId]: name }));
 //       return name;
 //     } catch (error) {
-//       console.error(`Error fetching manager name for ID ${managerId}:`, error);
+//       console.error(`Error fetching/decrypting manager name for ID ${managerId}:`, error);
 //       setManagerNames((prev) => ({ ...prev, [managerId]: 'Unknown Manager' }));
 //       return 'Unknown Manager';
 //     }
 //   };
 
 //   const fetchNotifications = async () => {
-//     if (!isAuthenticated || !user?.id) return;
+//     if (!isAuthenticated || !user?.id || !isKeysFetched) return;
 
 //     setNotificationLoading(true);
 //     setNotificationError(null);
 //     try {
 //       const response = await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/${user.id}`);
-//       if (Array.isArray(response)) {
-//         const notificationsWithNames = await Promise.all(
-//           response.map(async (notification) => ({
-//             ...notification,
-//             managerName: await fetchManagerName(notification.managerId),
-//           }))
-//         );
-//         setNotifications(notificationsWithNames);
-//         setNotificationHistory(notificationsWithNames);
-//         setUnreadCount(notificationsWithNames.filter((n) => !n.isRead).length);
-//         setToastNotifications(notificationsWithNames.filter((n) => !n.isRead).slice(0, 3));
-//         saveNotificationsToStorage(notificationsWithNames);
-//         saveNotificationHistoryToStorage(notificationsWithNames);
-//       } else {
+      
+//       if (!Array.isArray(response)) {
 //         throw new Error('Invalid response format: expected array');
 //       }
+//       console.log('Notifications response:', response);
+//       const fifteenDaysAgo = subDays(new Date(), 60);
+//       const notificationsWithNames = await Promise.all(
+//         response.map(async (notification) => {
+//           console.log('Processing notification with managerId:', notification.managerId);
+//           const sentAtDate = new Date(notification.sentAt);
+//           if (isNaN(sentAtDate)) return null;
+//           return {
+//             ...notification,
+//             managerName: await fetchManagerName(notification.managerId),
+//             isRead: notification.isRead || false,
+//             sentAt: sentAtDate.toISOString(),
+//           };
+//         })
+//       );
+//       const validNotifications = notificationsWithNames
+//         .filter(n => n !== null)
+//         .filter(n => new Date(n.sentAt) >= fifteenDaysAgo);
+//       const sortedNotifications = validNotifications.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+//       setNotifications(sortedNotifications.filter(n => !n.isRead));
+//       setNotificationHistory(sortedNotifications);
+//       setUnreadCount(sortedNotifications.filter(n => !n.isRead).length);
+//       setToastNotifications(sortedNotifications.filter(n => !n.isRead).slice(0, 3));
 //     } catch (error) {
 //       console.error('Error fetching notifications:', error);
 //       setNotificationError('Unable to load notifications. Please check your connection and try again.');
-//       const storedNotifications = loadNotificationsFromStorage();
-//       setNotifications(storedNotifications);
-//       setNotificationHistory(loadNotificationHistoryFromStorage());
-//       setUnreadCount(storedNotifications.filter((n) => !n.isRead).length);
-//       setToastNotifications(storedNotifications.filter((n) => !n.isRead).slice(0, 3));
+//       setNotifications([]);
+//       setNotificationHistory([]);
+//       setUnreadCount(0);
+//       setToastNotifications([]);
 //     }
 //     setNotificationLoading(false);
+//   };
+
+//   const formatDate = (dateString) => {
+//     try {
+//       const date = parseISO(dateString);
+//       if (isNaN(date)) return 'Invalid date';
+//       const dateInIST = addHours(date, 5.5);
+//       const now = new Date();
+//       const diffInHours = (now - dateInIST) / (1000 * 60 * 60);
+
+//       if (diffInHours < 1) return 'Just now';
+//       if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
+//       if (diffInHours < 48) return 'Yesterday';
+//       return dateInIST.toLocaleDateString('en-US', {
+//         month: 'short',
+//         day: 'numeric',
+//         ...(dateInIST.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+//       });
+//     } catch (error) {
+//       console.error('Error parsing date:', dateString, error);
+//       return 'Invalid date';
+//     }
 //   };
 
 //   const playNotificationSound = () => {
 //     if (!notificationSettings.soundEnabled) return;
 //     const audio = new Audio('/assets/notification-sound.wav');
-//     audio.play().catch((err) => console.warn('Audio play failed:', err));
+//     audio.play().catch(err => console.warn('Audio play failed:', err));
 //   };
 
 //   const scrollToTask = (taskId) => {
@@ -201,11 +309,8 @@
 
 //     for (let attempt = 1; attempt <= maxRetries; attempt++) {
 //       try {
-//         console.log(`Attempt ${attempt} to initialize SignalR connection`);
 //         const token = await acquireToken('api');
-//         if (!token) {
-//           throw new Error('Failed to acquire authentication token');
-//         }
+//         if (!token) throw new Error('Failed to acquire authentication token');
 
 //         socketRef.current = new HubConnectionBuilder()
 //           .withUrl(`${SOCKET_URL}/feedbackHub`, {
@@ -216,26 +321,33 @@
 //           .build();
 
 //         socketRef.current.on('newFeedback', async (notification) => {
+//           if (!isKeysFetched) {
+//             setQueuedNotifications(prev => [...prev, notification]);
+//             return;
+//           }
+//           const fifteenDaysAgo = subDays(new Date(), 60);
+//           const notificationDate = new Date(notification.sentAt);
+//           if (notificationDate < fifteenDaysAgo) return;
+
 //           const managerName = await fetchManagerName(notification.managerId);
 //           const newNotification = {
 //             ...notification,
 //             managerName,
 //             isRead: false,
+//             sentAt: notificationDate.toISOString(),
 //           };
-//           setNotifications((prev) => {
-//             const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id)];
-//             saveNotificationsToStorage(updated);
+//           setNotifications(prev => {
+//             const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id)];
 //             return updated;
 //           });
-//           setNotificationHistory((prev) => {
-//             const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id)];
-//             saveNotificationHistoryToStorage(updated);
-//             return updated;
+//           setNotificationHistory(prev => {
+//             const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id)];
+//             return updated.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
 //           });
-//           setUnreadCount((prev) => prev + 1);
-//           setToastNotifications((prev) => {
-//             const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id).slice(0, 2)];
-//             return updated.filter((n) => !n.isRead);
+//           setUnreadCount(prev => prev + 1);
+//           setToastNotifications(prev => {
+//             const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id).slice(0, 2)];
+//             return updated.filter(n => !n.isRead);
 //           });
 //           setNewNotificationPulse(true);
 //           setTimeout(() => setNewNotificationPulse(false), 2000);
@@ -243,38 +355,42 @@
 //         });
 
 //         socketRef.current.on('bulkFeedback', async (feedbacks) => {
+//           if (!isKeysFetched) {
+//             setQueuedNotifications(prev => [...prev, ...feedbacks.filter(fb => fb.userId === user.id)]);
+//             return;
+//           }
+//           const fifteenDaysAgo = subDays(new Date(), 60);
 //           const notificationsWithNames = await Promise.all(
 //             feedbacks
-//               .filter((fb) => fb.userId === user.id)
+//               .filter(fb => fb.userId === user.id && new Date(fb.sentAt) >= fifteenDaysAgo)
 //               .map(async (notification) => ({
 //                 ...notification,
 //                 managerName: await fetchManagerName(notification.managerId),
 //                 isRead: notification.isRead || false,
+//                 sentAt: new Date(notification.sentAt).toISOString(),
 //               }))
 //           );
-//           setNotifications((prev) => {
+//           setNotifications(prev => {
 //             const updated = [
 //               ...notificationsWithNames,
-//               ...prev.filter((n) => !notificationsWithNames.some((newN) => newN.id === n.id)),
+//               ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
 //             ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
-//             saveNotificationsToStorage(updated);
-//             return updated;
+//             return updated.filter(n => !n.isRead);
 //           });
-//           setNotificationHistory((prev) => {
+//           setNotificationHistory(prev => {
 //             const updated = [
 //               ...notificationsWithNames,
-//               ...prev.filter((n) => !notificationsWithNames.some((newN) => newN.id === n.id)),
+//               ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
 //             ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
-//             saveNotificationHistoryToStorage(updated);
 //             return updated;
 //           });
-//           setUnreadCount((prev) => prev + notificationsWithNames.filter((n) => !n.isRead).length);
-//           setToastNotifications((prev) => {
+//           setUnreadCount(prev => prev + notificationsWithNames.filter(n => !n.isRead).length);
+//           setToastNotifications(prev => {
 //             const updated = [
-//               ...notificationsWithNames.filter((n) => !n.isRead).slice(0, 3 - prev.length),
+//               ...notificationsWithNames.filter(n => !n.isRead).slice(0, 3 - prev.length),
 //               ...prev,
 //             ].slice(0, 3);
-//             return updated.filter((n) => !n.isRead);
+//             return updated.filter(n => !n.isRead);
 //           });
 //           setNewNotificationPulse(true);
 //           setTimeout(() => setNewNotificationPulse(false), 2000);
@@ -282,47 +398,143 @@
 //         });
 
 //         socketRef.current.onclose(() => {
-//           console.warn('SignalR disconnected');
 //           setNotificationError('Real-time updates are unavailable. Notifications will update periodically.');
 //         });
 
 //         socketRef.current.onreconnected(async () => {
-//           console.log('SignalR reconnected');
 //           await socketRef.current.invoke('JoinUser', user.id);
 //           setNotificationError(null);
 //         });
 
 //         await socketRef.current.start();
 //         await socketRef.current.invoke('JoinUser', user.id);
-//         console.log('SignalR connection established successfully');
 //         return;
 //       } catch (error) {
 //         console.error(`Attempt ${attempt} failed to initialize SignalR:`, error);
 //         if (attempt < maxRetries) {
 //           const delay = baseDelay * Math.pow(2, attempt - 1);
-//           await new Promise((resolve) => setTimeout(resolve, delay));
+//           await new Promise(resolve => setTimeout(resolve, delay));
 //         } else {
-//           console.error('All retries failed to initialize SignalR connection');
 //           setNotificationError('Real-time updates are unavailable. Notifications will update periodically.');
 //         }
 //       }
 //     }
 //   };
 
+//   const markAsRead = async (notificationId) => {
+//     try {
+//       setNotifications(prev => {
+//         const notification = prev.find(n => n.id === notificationId);
+//         if (!notification) return prev;
+//         const updated = prev.filter(n => n.id !== notificationId);
+//         setNotificationHistory(prevHistory => {
+//           const updatedHistory = [
+//             { ...notification, isRead: true },
+//             ...prevHistory.filter(n => n.id !== notificationId),
+//           ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+//           return updatedHistory;
+//         });
+//         return updated;
+//       });
+//       setToastNotifications(prev => prev.filter(n => n.id !== notificationId));
+//       setUnreadCount(prev => Math.max(0, prev - 1));
+//       setRemovingNotifications(prev => new Set(prev).add(notificationId));
+
+//       await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/${notificationId}/read`, 'PUT');
+
+//       setTimeout(() => {
+//         setRemovingNotifications(prev => {
+//           const newSet = new Set(prev);
+//           newSet.delete(notificationId);
+//           return newSet;
+//         });
+//       }, 600);
+//     } catch (error) {
+//       console.error('Error marking notification as read:', error);
+//       setNotificationError('Failed to mark notification as read. Please try again.');
+//       await fetchNotifications();
+//     }
+//   };
+
+//   const markAllAsRead = async () => {
+//     try {
+//       setNotifications([]);
+//       setNotificationHistory(prev => prev.map(n => ({ ...n, isRead: true })));
+//       setToastNotifications([]);
+//       setUnreadCount(0);
+//       setRemovingNotifications(new Set(notifications.map(n => n.id)));
+
+//       await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/user/${user.id}/read-all`, 'PUT');
+
+//       setTimeout(() => {
+//         setRemovingNotifications(new Set());
+//         setShowNotifications(false);
+//       }, 600);
+//     } catch (error) {
+//       console.error('Error marking all as read:', error);
+//       setNotificationError('Failed to mark all notifications as read. Please try again.');
+//       await fetchNotifications();
+//     }
+//   };
+
 //   useEffect(() => {
-//     if (!isAuthenticated || !user?.id) return;
+//     if (!isAuthenticated || !user?.id) {
+//       console.warn('Skipping initialization: not authenticated or missing user ID');
+//       return;
+//     }
 
 //     const initialize = async () => {
 //       setNotificationLoading(true);
-//       await fetchNotifications();
+//       for (let attempt = 1; attempt <= 5; attempt++) {
+//         try {
+//           console.log(`Attempt ${attempt} to fetch encryption keys from: ${ENCRYPTION_KEYS_ENDPOINT}`);
+//           const token = await acquireToken('api');
+//           if (!token) {
+//             throw new Error('Failed to acquire authentication token');
+//           }
+//           const response = await axios.get(ENCRYPTION_KEYS_ENDPOINT, {
+//             headers: {
+//               Authorization: `Bearer ${token}`,
+//               'Content-Type': 'application/json',
+//             },
+//           });
+//           console.log('Encryption keys response:', response.data);
+//           if (response.data?.aesKey && response.data?.aesIV) {
+//             setAesKey(response.data.aesKey);
+//             setAesIV(response.data.aesIV);
+//             setKeyError(null);
+//             setIsKeysFetched(true);
+//             break;
+//           } else {
+//             throw new Error('Invalid keys structure: missing aesKey or aesIV');
+//           }
+//         } catch (err) {
+//           console.error(`Attempt ${attempt} failed to fetch encryption keys:`, {
+//             message: err.message,
+//             response: err.response?.data,
+//             status: err.response?.status
+//           });
+//           setKeyError('Failed to fetch encryption keys');
+//           if (attempt < 5) {
+//             const delay = 2000 * Math.pow(2, attempt - 1);
+//             console.log(`Retrying in ${delay}ms...`);
+//             await new Promise(resolve => setTimeout(resolve, delay));
+//           } else {
+//             console.error('All retries failed to fetch encryption keys.');
+//             setKeyError('Unable to fetch encryption keys. Notifications may display incomplete information.');
+//           }
+//         }
+//       }
+
+//       if (isKeysFetched) await fetchNotifications();
 //       await initSocket();
 //       setNotificationLoading(false);
 //     };
 
 //     initialize();
 
-//     const notificationInterval = setInterval(() => {
-//       fetchNotifications();
+//     const notificationInterval = setInterval(async () => {
+//       if (isKeysFetched) await fetchNotifications();
 //     }, notificationError ? 30000 : 60000);
 
 //     return () => {
@@ -332,7 +544,52 @@
 //       }
 //       clearInterval(notificationInterval);
 //     };
-//   }, [isAuthenticated, user?.id, notificationError]);
+//   }, [isAuthenticated, user?.id, isKeysFetched, notificationError]);
+
+//   useEffect(() => {
+//     if (isKeysFetched && queuedNotifications.length > 0) {
+//       const processQueued = async () => {
+//         const fifteenDaysAgo = subDays(new Date(), 60);
+//         const notificationsWithNames = await Promise.all(
+//           queuedNotifications
+//             .filter(n => new Date(n.sentAt) >= fifteenDaysAgo)
+//             .map(async (notification) => ({
+//               ...notification,
+//               managerName: await fetchManagerName(notification.managerId),
+//               isRead: notification.isRead || false,
+//               sentAt: new Date(notification.sentAt).toISOString(),
+//             }))
+//         );
+//         setNotifications(prev => {
+//           const updated = [
+//             ...notificationsWithNames,
+//             ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
+//           ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+//           return updated.filter(n => !n.isRead);
+//         });
+//         setNotificationHistory(prev => {
+//           const updated = [
+//             ...notificationsWithNames,
+//             ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
+//           ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+//           return updated;
+//         });
+//         setUnreadCount(prev => prev + notificationsWithNames.filter(n => !n.isRead).length);
+//         setToastNotifications(prev => {
+//           const updated = [
+//             ...notificationsWithNames.filter(n => !n.isRead).slice(0, 3 - prev.length),
+//             ...prev,
+//           ].slice(0, 3);
+//           return updated.filter(n => !n.isRead);
+//         });
+//         setNewNotificationPulse(true);
+//         setTimeout(() => setNewNotificationPulse(false), 2000);
+//         playNotificationSound();
+//         setQueuedNotifications([]);
+//       };
+//       processQueued();
+//     }
+//   }, [isKeysFetched, queuedNotifications]);
 
 //   useEffect(() => {
 //     const handleClickOutside = (event) => {
@@ -341,12 +598,14 @@
 //         !notificationPanelRef.current.contains(event.target) &&
 //         !event.target.closest('[aria-label="Toggle notifications"]') &&
 //         !event.target.closest('.settings-modal') &&
-//         !event.target.closest('.notification-modal')
+//         !event.target.closest('.notification-modal') &&
+//         !filterButtonRef.current.contains(event.target)
 //       ) {
 //         setShowNotifications(false);
 //         setShowHistory(false);
 //         setIsNotificationModalOpen(false);
 //         setIsSettingsModalOpen(false);
+//         setShowFilter(false);
 //       }
 //     };
 
@@ -356,10 +615,11 @@
 //         setShowHistory(false);
 //         setIsNotificationModalOpen(false);
 //         setIsSettingsModalOpen(false);
+//         setShowFilter(false);
 //       }
 //     };
 
-//     if (showNotifications || isNotificationModalOpen || isSettingsModalOpen) {
+//     if (showNotifications || isNotificationModalOpen || isSettingsModalOpen || showFilter) {
 //       document.addEventListener('click', handleClickOutside);
 //       document.addEventListener('keydown', handleEscapeKey);
 //     }
@@ -368,7 +628,7 @@
 //       document.removeEventListener('click', handleClickOutside);
 //       document.removeEventListener('keydown', handleEscapeKey);
 //     };
-//   }, [showNotifications, isNotificationModalOpen, isSettingsModalOpen]);
+//   }, [showNotifications, isNotificationModalOpen, isSettingsModalOpen, showFilter]);
 
 //   useEffect(() => {
 //     if (toastNotifications.length === 0) return;
@@ -376,11 +636,11 @@
 //     const timers = toastNotifications.map((notification, index) => {
 //       if (notification.isRead || notification.paused) return null;
 //       return setTimeout(() => {
-//         setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+//         setToastNotifications(prev => prev.filter(n => n.id !== notification.id));
 //       }, notificationSettings.toastDuration + index * 500);
 //     });
 
-//     return () => timers.forEach((timer) => timer && clearTimeout(timer));
+//     return () => timers.forEach(timer => timer && clearTimeout(timer));
 //   }, [toastNotifications, notificationSettings]);
 
 //   useEffect(() => {
@@ -390,54 +650,119 @@
 //     }
 //   }, [notifications, unreadCount, showNotifications, removingNotifications, showHistory]);
 
-//   // useEffect(() => {
-//   //   setCurrentPage(1);
-//   // }, [filteredTasks]);
+//   // Helper function to format date for API
+//   const formatToDDMMYYYY = (dateStr) => {
+//     if (!dateStr) return null;
+//     try {
+//       const [year, month, day] = dateStr.split('-');
+//       return `${day}-${month}-${year}`;
+//     } catch (e) {
+//       console.error('Invalid date format:', dateStr);
+//       return null;
+//     }
+//   };
 
 //   useEffect(() => {
-//     if (!isAuthenticated || isLoading || !user?.id) return;
+//     if (!isAuthenticated || isLoading || !user?.id) {
+//       console.warn('Skipping fetchTasksAndSubtasks: not authenticated, loading, or missing user ID', {
+//         isAuthenticated,
+//         isLoading,
+//         userId: user?.id
+//       });
+//       return;
+//     }
 
 //     const fetchTasksAndSubtasks = async () => {
 //       try {
+//         const filterParams = {
+//           pageNumber: currentPage,
+//           pageSize: tasksPerPage,
+//           priority: activeFilters.priority || null,
+//           status: activeFilters.status || null,
+//           startDate: formatToDDMMYYYY(activeFilters.startDate) || null,
+//           dueDate: formatToDDMMYYYY(activeFilters.dueDate) || null,
+//           searchTerm: searchQuery.trim() || activeFilters.searchTerm.trim() || null,
+//           assignedTo: activeFilters.assignedTo || null,
+//           hasSubtasks: activeFilters.hasSubtasks || null,
+//         };
+
+//         console.log('Fetching tasks with params:', filterParams);
+
 //         const response = await makeAuthenticatedRequest(
-//           `${API_ENDPOINT}?pageNumber=${currentPage}&pageSize=${tasksPerPage}`
+//           `${API_ENDPOINT}/GetAllTasks`,
+//           'GET',
+//           null,
+//           filterParams
 //         );
-//         let processedTasks = response.data.map((task) => ({
-//           ...task,
-//           id: task.id || task.Id || task.taskId || task.TaskId,
-//           taskName: task.taskName || task.TaskName,
-//           steps: [],
-//           subTasksCount: task.subTasksCount || 0,
-//         }));
+
+//         // Validate response structure
+//         if (!response || !response.data || !Array.isArray(response.data)) {
+//           throw new Error('Invalid response format: data is missing or not an array');
+//         }
+
+//         if (!response.pagination) {
+//           console.warn('Pagination data missing in response, using default pagination');
+//           response.pagination = {
+//             totalCount: response.data.length,
+//             pageNumber: currentPage,
+//             pageSize: tasksPerPage,
+//             totalPages: Math.ceil(response.data.length / tasksPerPage),
+//             hasPreviousPage: currentPage > 1,
+//             hasNextPage: response.data.length === tasksPerPage
+//           };
+//         }
+
+//         let processedTasks = response.data.map((task, index) => {
+//           if (!task) {
+//             console.warn(`Task at index ${index} is null or undefined`);
+//             return null;
+//           }
+//           return {
+//             ...task,
+//             id: task.id || task.Id || task.taskId || task.TaskId || `temp-${Math.random()}`,
+//             taskName: task.taskName || task.TaskName || '',
+//             steps: [],
+//             subTasksCount: task.subTasksCount || 0,
+//           };
+//         }).filter(task => task !== null);
 
 //         let subtasks = [];
 //         try {
 //           const subtaskData = await makeAuthenticatedRequest(SUBTASK_ENDPOINT);
-//           subtasks = Array.isArray(subtaskData)
-//             ? subtaskData
-//                 .map((subtask) => {
-//                   if (!subtask || typeof subtask !== 'object') return null;
-//                   return {
-//                     id: (subtask.Id || subtask.id || subtask.subtaskId || subtask.subTaskId || `temp-${Math.random()}`).toString(),
-//                     name: subtask.SubTaskName || subtask.subTaskName || subtask.subtaskName || subtask.sub_task_name || '',
-//                     description: subtask.Description || subtask.description || subtask.subTaskDescription || '',
-//                     startDate: (subtask.StartDate || subtask.startDate || subtask.start_date)?.split('T')[0] || '',
-//                     dueDate: (subtask.DueDate || subtask.dueDate || subtask.due_date)?.split('T')[0] || '',
-//                     status: subtask.Status || subtask.status || subtask.subTaskStatus || 'Not Started',
-//                     estimatedHours: parseFloat(subtask.EstimatedHours || subtask.estimatedHours || subtask.estimated_hours || 0),
-//                     completedHours: parseFloat(subtask.CompletedHours || subtask.completedHours || subtask.completed_hours || 0),
-//                     completed: (subtask.Status || subtask.status || subtask.subTaskStatus) === 'Completed',
-//                     priority: subtask.Priority || subtask.priority || 'Medium',
-//                     taskId: subtask.TaskItemId || subtask.taskItemId || subtask.taskId || subtask.task_item_id || null,
-//                   };
-//                 })
-//                 .filter((subtask) => subtask !== null)
-//             : [];
+//           if (!Array.isArray(subtaskData)) {
+//             console.warn('Subtask data is not an array:', subtaskData);
+//           } else {
+//             subtasks = subtaskData
+//               .map((subtask, index) => {
+//                 if (!subtask || typeof subtask !== 'object') {
+//                   console.warn(`Subtask at index ${index} is invalid:`, subtask);
+//                   return null;
+//                 }
+//                 return {
+//                   id: (subtask.Id || subtask.id || subtask.subtaskId || subtask.subTaskId || `temp-${Math.random()}`).toString(),
+//                   name: subtask.SubTaskName || subtask.subTaskName || subtask.subtaskName || subtask.sub_task_name || '',
+//                   description: subtask.Description || subtask.description || subtask.subTaskDescription || '',
+//                   startDate: (subtask.StartDate || subtask.startDate || subtask.start_date)?.split('T')[0] || '',
+//                   dueDate: (subtask.DueDate || subtask.dueDate || subtask.due_date)?.split('T')[0] || '',
+//                   status: subtask.Status || subtask.status || subtask.subTaskStatus || 'Not Started',
+//                   estimatedHours: parseFloat(subtask.EstimatedHours || subtask.estimatedHours || subtask.estimated_hours || 0),
+//                   completedHours: parseFloat(subtask.CompletedHours || subtask.completedHours || subtask.completed_hours || 0),
+//                   completed: (subtask.Status || subtask.status || subtask.subTaskStatus) === 'Completed',
+//                   priority: subtask.Priority || subtask.priority || 'Medium',
+//                   taskId: subtask.TaskItemId || subtask.taskItemId || subtask.taskId || subtask.task_item_id || null,
+//                 };
+//               })
+//               .filter(subtask => subtask !== null);
+//           }
 //         } catch (subtaskError) {
 //           console.warn('Subtask endpoint failed, continuing with tasks only:', subtaskError.message);
 //         }
 
-//         processedTasks = processedTasks.map((task) => {
+//         processedTasks = processedTasks.map((task, index) => {
+//           if (!task) {
+//             console.warn(`Processed task at index ${index} is null`);
+//             return null;
+//           }
 //           const taskSteps = subtasks.filter((subtask) => subtask?.taskId && subtask.taskId.toString() === task.id.toString());
 //           return {
 //             ...task,
@@ -447,13 +772,30 @@
 //             completedHours: taskSteps.reduce((total, step) => total + (parseFloat(step.completedHours) || 0), 0) || task.completedHours || 0,
 //             status: taskSteps.length > 0 && taskSteps.every((step) => step.status === 'Completed') ? 'Completed' : task.status || 'Not Started',
 //           };
-//         });
+//         }).filter(task => task !== null);
+
+//         if (processedTasks.length === 0) {
+//           console.warn('No valid tasks after processing');
+//         }
 
 //         setTaskList(processedTasks);
+//         setFilteredTasks(processedTasks);
 //         setPaginationData(response.pagination);
-//         applyFilters(processedTasks, searchQuery, activeFilters);
 //       } catch (error) {
-//         console.error('Error fetching tasks:', error);
+//         console.error('Error fetching tasks:', error, {
+//           currentPage,
+//           filterParams: {
+//             pageNumber: currentPage,
+//             pageSize: tasksPerPage,
+//             priority: activeFilters.priority,
+//             status: activeFilters.status,
+//             startDate: activeFilters.startDate,
+//             dueDate: activeFilters.dueDate,
+//             searchTerm: searchQuery || activeFilters.searchTerm,
+//             assignedTo: activeFilters.assignedTo,
+//             hasSubtasks: activeFilters.hasSubtasks,
+//           }
+//         });
 //         alert(`Failed to load tasks for page ${currentPage}: ${error.message || 'Please try again.'}`);
 //         setTaskList([]);
 //         setFilteredTasks([]);
@@ -469,7 +811,7 @@
 //     };
 
 //     fetchTasksAndSubtasks();
-//   }, [refreshTrigger, isAuthenticated, isLoading, user?.id, currentPage]);
+//   }, [refreshTrigger, isAuthenticated, isLoading, user?.id, currentPage, searchQuery]);
 
 //   const parseDDMMYYYY = (dateStr) => {
 //     if (!dateStr) return null;
@@ -501,7 +843,7 @@
 //   const handleCreateTask = async (newTask) => {
 //     try {
 //       setTaskList((prev) => [newTask, ...prev]);
-//       applyFilters([newTask, ...taskList], searchQuery, activeFilters);
+//       setFilteredTasks((prev) => [newTask, ...prev]);
 //       setCurrentPage(1);
 //       setRefreshTrigger((prev) => prev + 1);
 //     } catch (error) {
@@ -510,33 +852,31 @@
 //     }
 //   };
 
-// //   const handleCreateTask = async (newTask) => {
-// //     try {
-// //         if (!newTask || !newTask.id || !newTask.taskName) {
-// //             throw new Error('Invalid task: missing id or taskName');
-// //         }
-// //         setTaskList((prev) => [newTask, ...prev.filter(task => task && task.id)]);
-// //         applyFilters([newTask, ...taskList], searchQuery, activeFilters);
-// //         setCurrentPage(1);
-// //         setRefreshTrigger((prev) => prev + 1);
-// //     } catch (error) {
-// //         console.error('Error handling new task:', error);
-// //         alert('Failed to add task: ' + (error.message || 'Please try again.'));
-// //     }
-// // };
-
 //   const handleOnSearch = (query) => {
-//     setSearchQuery(query);
-//     applyFilters(taskList, query, activeFilters);
+//     const trimmedQuery = query.trim();
+//     setSearchQuery(trimmedQuery);
+//     setActiveFilters((prev) => ({ ...prev, searchTerm: trimmedQuery }));
+//     setCurrentPage(1);
+//     setRefreshTrigger((prev) => prev + 1);
 //   };
 
-//   const handleFilterChange = (filters) => {
+//   const handleFilterChange = ({ tasks, filters }) => {
 //     const mergedFilters = { ...activeFilters, ...filters };
 //     setActiveFilters(mergedFilters);
-//     applyFilters(taskList, searchQuery, mergedFilters);
-
+//     setFilteredTasks(tasks || []);
+//     setCurrentPage(1);
 //     const count = Object.values(mergedFilters).filter((value) => value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)).length;
 //     setFilterCount(count);
+//   };
+
+//   const handleClearFilters = () => {
+//     const emptyFilters = { priority: '', status: '', startDate: '', dueDate: '', assignedTo: '', hasSubtasks: null, searchTerm: '' };
+//     setActiveFilters(emptyFilters);
+//     setFilterCount(0);
+//     setSearchQuery('');
+//     setCurrentPage(1);
+//     setRefreshTrigger((prev) => prev + 1);
+//     setShowFilter(false);
 //   };
 
 //   const toggleFilter = () => {
@@ -556,111 +896,27 @@
 //     setIsAddModalOpen(true);
 //   };
 
-//   const applyFilters = (tasks, query, filters) => {
-//     let result = [...tasks];
-
-//     if (query) {
-//       const searchLower = query.toLowerCase();
-//       result = result.filter((task) => task.taskName.toLowerCase().includes(searchLower) || (task.description && task.description.toLowerCase().includes(searchLower)));
-//     }
-
-//     if (filters.searchTerm) {
-//       const searchLower = filters.searchTerm.toLowerCase();
-//       result = result.filter((task) => task.taskName.toLowerCase().includes(searchLower) || (task.description && task.description.toLowerCase().includes(searchLower)));
-//     }
-
-//     if (filters.priority) {
-//       result = result.filter((task) => task.priority === filters.priority);
-//     }
-
-//     if (filters.status) {
-//       result = result.filter((task) => task.status === filters.status);
-//     }
-
-//     if (filters.startDate || filters.dueDate) {
-//       result = result.filter((task) => {
-//         const taskStartDate = parseDDMMYYYY(task.startDate);
-//         const taskDueDate = parseDDMMYYYY(task.dueDate);
-//         const filterStartDate = parseDDMMYYYY(filters.startDate);
-//         const filterDueDate = parseDDMMYYYY(filters.dueDate);
-
-//         if (filterStartDate && !filterDueDate) {
-//           return taskStartDate && isSameDate(taskStartDate, filterStartDate);
-//         }
-//         if (filterDueDate && !filterStartDate) {
-//           return taskDueDate && isSameDate(taskDueDate, filterDueDate);
-//         }
-//         if (filterStartDate && filterDueDate) {
-//           return (
-//             taskStartDate &&
-//             taskDueDate &&
-//             (isSameDate(taskStartDate, filterStartDate) || taskStartDate >= filterStartDate) &&
-//             (isSameDate(taskDueDate, filterDueDate) || taskDueDate <= filterDueDate)
-//           );
-//         }
-//         return true;
-//       });
-//     }
-
-//     if (filters.assignedTo) {
-//       if (filters.assignedTo === 'unassigned') {
-//         result = result.filter((task) => !task.assignedTo);
-//       } else if (filters.assignedTo === 'me') {
-//         const currentUser = user?.id || 'Current User';
-//         result = result.filter((task) => task.assignedTo === currentUser);
-//       } else {
-//         result = result.filter((task) => task.assignedTo === filters.assignedTo);
-//       }
-//     }
-
-//     if (filters.hasSubtasks !== null) {
-//       result = result.filter((task) => {
-//         const hasChildTasks = task.steps && task.steps.length > 0;
-//         return filters.hasSubtasks ? hasChildTasks : !hasChildTasks;
-//       });
-//     }
-
-//     setFilteredTasks(result);
-//   };
-
-//   // const prepareTasksForGantt = (tasks) => {
-//   //   return tasks.map((task) => {
-//   //     if (!task.startDate || !task.dueDate) {
-//   //       const today = new Date();
-//   //       const nextWeek = new Date();
-//   //       nextWeek.setDate(today.getDate() + 7);
-//   //       return {
-//   //         ...task,
-//   //         startDate: task.startDate || today.toISOString().split('T')[0],
-//   //         dueDate: task.dueDate || nextWeek.toISOString().split('T')[0],
-//   //       };
-//   //     }
-//   //     return task;
-//   //   });
-//   // };
-
-
-//   const prepareTasksForGantt = (tasks) => {
-//   return tasks
-//     .filter(task => task && task.id) // Skip undefined/null tasks or tasks without an id
-//     .map((task) => {
-//       if (!task.startDate || !task.dueDate) {
-//         const today = new Date();
-//         const nextWeek = new Date();
-//         nextWeek.setDate(today.getDate() + 7);
-//         return {
-//           ...task,
-//           startDate: task.startDate || today.toISOString().split('T')[0],
-//           dueDate: task.dueDate || nextWeek.toISOString().split('T')[0],
-//         };
-//       }
-//       return task;
-//     });
-// };
-
 //   const handlePageChange = (pageNumber) => {
 //     setCurrentPage(pageNumber);
 //     window.scrollTo({ top: 0, behavior: 'smooth' });
+//   };
+
+//   const prepareTasksForGantt = (tasks) => {
+//     return tasks
+//       .filter(task => task && task.id)
+//       .map((task) => {
+//         if (!task.startDate || !task.dueDate) {
+//           const today = new Date();
+//           const nextWeek = new Date();
+//           nextWeek.setDate(today.getDate() + 7);
+//           return {
+//             ...task,
+//             startDate: task.startDate || today.toISOString().split('T')[0],
+//             dueDate: task.dueDate || nextWeek.toISOString().split('T')[0],
+//           };
+//         }
+//         return task;
+//       });
 //   };
 
 //   const ganttReadyTasks = prepareTasksForGantt(filteredTasks);
@@ -705,6 +961,11 @@
 //           }
 //         `}
 //       </style>
+//       {keyError && (
+//         <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-4">
+//           {keyError}
+//         </div>
+//       )}
 //       {notificationError && (
 //         <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-4">
 //           {notificationError}
@@ -712,7 +973,7 @@
 //             onClick={async () => {
 //               setNotificationError(null);
 //               await initSocket();
-//               await fetchNotifications();
+//               if (isKeysFetched) await fetchNotifications();
 //             }}
 //             className="ml-4 text-sm text-purple-600 hover:text-purple-800 font-medium"
 //           >
@@ -836,13 +1097,17 @@
 //             } hover:shadow-xl group animate-slide-in-right`}
 //             style={{ marginBottom: `${index * 0.75}rem` }}
 //             onMouseEnter={() => {
-//               setToastNotifications((prev) =>
-//                 prev.map((n) => (n.id === notification.id ? { ...n, paused: true } : n))
+//               setToastNotifications(prev =>
+//                 prev.map(n =>
+//                   n.id === notification.id ? { ...n, paused: true } : n
+//                 )
 //               );
 //             }}
 //             onMouseLeave={() => {
-//               setToastNotifications((prev) =>
-//                 prev.map((n) => (n.id === notification.id ? { ...n, paused: false } : n))
+//               setToastNotifications(prev =>
+//                 prev.map(n =>
+//                   n.id === notification.id ? { ...n, paused: false } : n
+//                 )
 //               );
 //             }}
 //           >
@@ -871,21 +1136,7 @@
 //                       View
 //                     </button>
 //                     <button
-//                       onClick={() => {
-//                         setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-//                         setRemovingNotifications((prev) => {
-//                           const newSet = new Set(prev);
-//                           newSet.add(notification.id);
-//                           return newSet;
-//                         });
-//                         setTimeout(() => {
-//                           setRemovingNotifications((prev) => {
-//                             const newSet = new Set(prev);
-//                             newSet.delete(notification.id);
-//                             return newSet;
-//                           });
-//                         }, 600);
-//                       }}
+//                       onClick={() => markAsRead(notification.id)}
 //                       className="text-xs text-gray-500 hover:text-gray-700 font-medium"
 //                     >
 //                       Dismiss
@@ -894,21 +1145,7 @@
 //                 )}
 //               </div>
 //               <button
-//                 onClick={() => {
-//                   setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-//                   setRemovingNotifications((prev) => {
-//                     const newSet = new Set(prev);
-//                     newSet.add(notification.id);
-//                     return newSet;
-//                   });
-//                   setTimeout(() => {
-//                     setRemovingNotifications((prev) => {
-//                       const newSet = new Set(prev);
-//                       newSet.delete(notification.id);
-//                       return newSet;
-//                     });
-//                   }, 600);
-//                 }}
+//                 onClick={() => markAsRead(notification.id)}
 //                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
 //               >
 //                 <X className="w-4 h-4" />
@@ -1007,7 +1244,7 @@
 //                       onClick={async () => {
 //                         setNotificationError(null);
 //                         await initSocket();
-//                         await fetchNotifications();
+//                         if (isKeysFetched) await fetchNotifications();
 //                       }}
 //                       className="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
 //                     >
@@ -1063,21 +1300,7 @@
 //                                   View
 //                                 </button>
 //                                 <button
-//                                   onClick={() => {
-//                                     setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-//                                     setRemovingNotifications((prev) => {
-//                                       const newSet = new Set(prev);
-//                                       newSet.add(notification.id);
-//                                       return newSet;
-//                                     });
-//                                     setTimeout(() => {
-//                                       setRemovingNotifications((prev) => {
-//                                         const newSet = new Set(prev);
-//                                         newSet.delete(notification.id);
-//                                         return newSet;
-//                                       });
-//                                     }, 600);
-//                                   }}
+//                                   onClick={() => markAsRead(notification.id)}
 //                                   className="text-xs text-gray-500 hover:text-gray-700 font-medium"
 //                                 >
 //                                   Dismiss
@@ -1125,7 +1348,7 @@
 //             </button>
 //           </div>
 //           <div className="flex-grow min-w-[200px] md:max-w-md">
-//             <SearchBar placeholder="Search tasks..." onSearch={handleOnSearch} className="w-full" />
+//             <SearchBar placeholder="Search tasks by name or description..." onSearch={handleOnSearch} className="w-full" />
 //           </div>
 //           <div className="flex gap-3 flex-shrink-0 items-center justify-end flex-wrap">
 //             <div className="relative">
@@ -1157,22 +1380,26 @@
 //             <div className="relative">
 //               <Button
 //                 ref={filterButtonRef}
-//                 onClick={toggleFilter}
+//                 onClick={() => {
+//                   if (filterCount > 0) {
+//                     handleClearFilters();
+//                   } else {
+//                     toggleFilter();
+//                   }
+//                 }}
 //                 className="flex items-center gap-1.5 min-w-[110px] justify-center whitespace-nowrap"
 //                 style={{ transition: 'width 0.2s ease' }}
 //               >
-//                 {showFilter ? (
+//                 {filterCount > 0 ? (
 //                   <>
-//                     <X className="w-4 h-4" />
-//                     Hide Filter
+//                     <FilterIcon className="w-4 h-4" />
+//                     Clear Filter
+//                     <span className="bg-white text-purple-600 text-xs px-1.5 py-0.5 rounded-full border border-current">{filterCount}</span>
 //                   </>
 //                 ) : (
 //                   <>
 //                     <FilterIcon className="w-4 h-4" />
 //                     Filter
-//                     {filterCount > 0 && (
-//                       <span className="bg-white text-purple-600 text-xs px-1.5 py-0.5 rounded-full border border-current">{filterCount}</span>
-//                     )}
 //                   </>
 //                 )}
 //               </Button>
@@ -1196,7 +1423,7 @@
 //         makeAuthenticatedRequest={makeAuthenticatedRequest}
 //         dependencyTaskId={0}
 //       />
-//       {viewMode === 'list' && taskList.length > 0 && (
+//       {viewMode === 'list' && taskList.length > 0 && filteredTasks.length > 0 && (
 //         <TaskList
 //           taskList={filteredTasks}
 //           setTaskList={setTaskList}
@@ -1214,18 +1441,10 @@
 //       )}
 //       {viewMode === 'list' && taskList.length > 0 && filteredTasks.length === 0 && (
 //         <div className="bg-white rounded-lg shadow p-8 text-center">
-//           <div className="text-gray-500 mb-2">No tasks match your current filters</div>
-//           {filterCount > 0 && (
-//             <Button
-//               onClick={() => {
-//                 const emptyFilters = { priority: '', status: '', startDate: '', dueDate: '', assignedTo: '', hasSubtasks: null, searchTerm: '' };
-//                 setActiveFilters(emptyFilters);
-//                 setFilterCount(0);
-//                 applyFilters(taskList, searchQuery, emptyFilters);
-//               }}
-//               className="mt-2"
-//             >
-//               Clear All Filters
+//           <div className="text-gray-500 mb-2">No tasks match your current filters or search query</div>
+//           {(filterCount > 0 || searchQuery) && (
+//             <Button onClick={handleClearFilters} className="mt-2">
+//               Clear All Filters and Search
 //             </Button>
 //           )}
 //         </div>
@@ -1236,23 +1455,25 @@
 
 // export default UserView;
 
+
 import React, { useState, useEffect, useRef } from 'react';
-import { HubConnectionBuilder, HubConnectionState, LogLevel } from '@microsoft/signalr';
-import { parseISO, addHours } from 'date-fns';
+import { HubConnectionBuilder, LogLevel, HubConnectionState } from '@microsoft/signalr';
 import Button from '../../common-components/Button';
 import SearchBar from '../../common-components/SearchBar';
 import { BadgePlus, X, FilterIcon, CalendarRange, List, Kanban, GitBranch, Bell, User, MessageCircle, Clock, CheckCircle2, Eye } from 'lucide-react';
 import TaskList from './TaskList';
 import AddTaskModal from './AddTaskModal';
-import Filter from './FilterModal';
+import FilterModal from './FilterModal';
 import GanttChart from './GanttChart';
 import FocusBoard from './FocusBoard';
 import DependencyRequests from './DependencyRequests';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-
-
+import CryptoJS from 'crypto-js';
+import { parseISO, addHours, subDays } from 'date-fns';
+import { decryptString } from '../../services/decrypt';
+import { fetchEncryptionKeys } from '../../services/apiClient';
 
 function UserView() {
   const navigate = useNavigate();
@@ -1270,22 +1491,24 @@ function UserView() {
     dueDate: '',
     assignedTo: '',
     hasSubtasks: null,
-    searchTerm: '',
+    searchTerm: ''
   });
   const [filterCount, setFilterCount] = useState(0);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
-  const tasksPerPage = 5;
   const [paginationData, setPaginationData] = useState({
     totalCount: 0,
     pageNumber: 1,
-    pageSize: tasksPerPage,
+    pageSize: 5,
     totalPages: 1,
     hasPreviousPage: false,
     hasNextPage: false,
   });
+  const tasksPerPage = 5;
+  // Notification states
   const [notifications, setNotifications] = useState([]);
   const [notificationHistory, setNotificationHistory] = useState([]);
+  const [queuedNotifications, setQueuedNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -1302,6 +1525,12 @@ function UserView() {
     const saved = localStorage.getItem('notificationSettings');
     return saved ? JSON.parse(saved) : { soundEnabled: true, toastDuration: 5000 };
   });
+  // Encryption states
+  const [aesKey, setAesKey] = useState(null);
+  const [aesIV, setAesIV] = useState(null);
+  const [keyError, setKeyError] = useState(null);
+  const [isKeysFetched, setIsKeysFetched] = useState(false);
+
   const filterButtonRef = useRef(null);
   const notificationPanelRef = useRef(null);
   const socketRef = useRef(null);
@@ -1311,33 +1540,49 @@ function UserView() {
   const API_ENDPOINT = 'http://localhost:5181/api/Task';
   const SUBTASK_ENDPOINT = 'http://localhost:5181/api/SubTask';
   const FEEDBACK_ENDPOINT = 'http://localhost:5181/api/Feedback';
-  const USER_ENDPOINT = 'http://localhost:5181/api/User';
+  const USER_ENDPOINT = 'http://localhost:5181/api/User/user1';
+  const ENCRYPTION_KEYS_ENDPOINT = 'http://localhost:5181/api/Encryption/keys';
   const SOCKET_URL = 'http://localhost:5181';
 
+  // Save notification settings
   const saveNotificationSettings = (settings) => {
     setNotificationSettings(settings);
     localStorage.setItem('notificationSettings', JSON.stringify(settings));
   };
 
-  const loadNotificationsFromStorage = () => {
-    const stored = localStorage.getItem('notifications');
-    return stored ? JSON.parse(stored) : [];
-  };
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        console.log('Starting to fetch encryption keys...');
+        try {
+          const keys = await fetchEncryptionKeys();
+          console.log('Keys fetched:', keys);
+          if (keys && keys.aesKey && keys.aesIV) {
+            setAesKey(keys.aesKey);
+            setAesIV(keys.aesIV);
+            console.log('Keys set successfully');
+          } else {
+            throw new Error('Invalid keys structure');
+          }
+        } catch (keyError) {
+          console.error('Failed to fetch encryption keys:', keyError);
+          setKeyError(keyError.message);
+        }
+        
+        if (!user?.id) {
+          console.error('User ID missing');
+          
+          return;
+        }
+      } catch (error) {
+        console.error('Error in fetchData:', error);
+        
+      }
+    };
+    fetchData();
+  }, [user?.id]);
 
-  const saveNotificationsToStorage = (notifications) => {
-    localStorage.setItem('notifications', JSON.stringify(notifications));
-  };
-
-  const loadNotificationHistoryFromStorage = () => {
-    const stored = localStorage.getItem('notificationHistory');
-    return stored ? JSON.parse(stored) : [];
-  };
-
-  const saveNotificationHistoryToStorage = (history) => {
-    localStorage.setItem('notificationHistory', JSON.stringify(history));
-  };
-
-  const makeAuthenticatedRequest = async (url, method = 'GET', data = null) => {
+  const makeAuthenticatedRequest = async (url, method = 'GET', data = null, params = null) => {
     try {
       const token = await acquireToken('api');
       if (!token) throw new Error('Failed to acquire authentication token');
@@ -1355,11 +1600,17 @@ function UserView() {
         config.data = data;
       }
 
+      if (params) {
+        config.params = Object.fromEntries(
+          Object.entries(params).filter(([_, value]) => value !== null && value !== '' && value !== undefined)
+        );
+      }
+
       const response = await axios(config);
       return response.data;
     } catch (error) {
+      console.error(`Error in request to ${url}:`, error);
       if (error.response?.status === 401) {
-        console.error('Authentication failed. Token may be expired.');
         throw new Error('Authentication failed. Please try logging in again.');
       }
       throw error;
@@ -1367,60 +1618,138 @@ function UserView() {
   };
 
   const fetchManagerName = async (managerId) => {
-    if (!managerId) return 'Unknown Manager';
-    if (managerNames[managerId]) return managerNames[managerId];
+    if (!managerId) {
+      console.warn('No managerId provided');
+      return 'Unknown Managerss';
+    }
+
+    if (managerNames[managerId]) {
+      console.log('Using cached manager name for ID:', managerId, managerNames[managerId]);
+      return managerNames[managerId];
+    }
+
+    if (!isKeysFetched) {
+      console.warn('Encryption keys not fetched, isKeysFetched:', isKeysFetched, 'keyError:', keyError);
+      return keyError ? 'Unknown Manager' : 'Fetching...';
+    }
 
     try {
       const response = await makeAuthenticatedRequest(`${USER_ENDPOINT}/${managerId}`);
-      const name = response?.name || 'Unknown Manager';
+      console.log('Manager API response:', JSON.stringify(response, null, 2));
+
+      // Helper to extract name from various formats
+      const extractName = (data) => {
+        if (!data) return null;
+        if (typeof data === 'string') return data;
+        if (typeof data === 'object') {
+          return (
+            data.fullName ||
+            data.name ||
+            data.Name ||
+            data.username ||
+            (data.first && data.last ? `${data.first} ${data.last}` : null)
+          );
+        }
+        return null;
+      };
+
+      let encryptedName;
+      if (Array.isArray(response)) {
+        console.log('Response is an array, checking first element:', response[0]);
+        encryptedName = extractName(response[0]);
+      } else {
+        encryptedName = extractName(response);
+      }
+
+      if (!encryptedName) {
+        console.error('No name field found in response:', response);
+        throw new Error('No name field in response');
+      }
+
+      console.log('Encrypted name:', encryptedName);
+      const name = decryptString(encryptedName, aesKey, aesIV);
+      console.log('Decrypted name:', name);
+
       setManagerNames((prev) => ({ ...prev, [managerId]: name }));
       return name;
     } catch (error) {
-      console.error(`Error fetching manager name for ID ${managerId}:`, error);
+      console.error(`Error fetching/decrypting manager name for ID ${managerId}:`, error);
       setManagerNames((prev) => ({ ...prev, [managerId]: 'Unknown Manager' }));
       return 'Unknown Manager';
     }
   };
 
   const fetchNotifications = async () => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id || !isKeysFetched) return;
 
     setNotificationLoading(true);
     setNotificationError(null);
     try {
       const response = await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/${user.id}`);
-      if (Array.isArray(response)) {
-        const notificationsWithNames = await Promise.all(
-          response.map(async (notification) => ({
-            ...notification,
-            managerName: await fetchManagerName(notification.managerId),
-          }))
-        );
-        setNotifications(notificationsWithNames);
-        setNotificationHistory(notificationsWithNames);
-        setUnreadCount(notificationsWithNames.filter((n) => !n.isRead).length);
-        setToastNotifications(notificationsWithNames.filter((n) => !n.isRead).slice(0, 3));
-        saveNotificationsToStorage(notificationsWithNames);
-        saveNotificationHistoryToStorage(notificationsWithNames);
-      } else {
+      
+      if (!Array.isArray(response)) {
         throw new Error('Invalid response format: expected array');
       }
+      console.log('Notifications response:', response);
+      const fifteenDaysAgo = subDays(new Date(), 60);
+      const notificationsWithNames = await Promise.all(
+        response.map(async (notification) => {
+          console.log('Processing notification with managerId:', notification.managerId);
+          const sentAtDate = new Date(notification.sentAt);
+          if (isNaN(sentAtDate)) return null;
+          return {
+            ...notification,
+            managerName: await fetchManagerName(notification.managerId),
+            isRead: notification.isRead || false,
+            sentAt: sentAtDate.toISOString(),
+          };
+        })
+      );
+      const validNotifications = notificationsWithNames
+        .filter(n => n !== null)
+        .filter(n => new Date(n.sentAt) >= fifteenDaysAgo);
+      const sortedNotifications = validNotifications.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+      setNotifications(sortedNotifications.filter(n => !n.isRead));
+      setNotificationHistory(sortedNotifications);
+      setUnreadCount(sortedNotifications.filter(n => !n.isRead).length);
+      setToastNotifications(sortedNotifications.filter(n => !n.isRead).slice(0, 3));
     } catch (error) {
       console.error('Error fetching notifications:', error);
       setNotificationError('Unable to load notifications. Please check your connection and try again.');
-      const storedNotifications = loadNotificationsFromStorage();
-      setNotifications(storedNotifications);
-      setNotificationHistory(loadNotificationHistoryFromStorage());
-      setUnreadCount(storedNotifications.filter((n) => !n.isRead).length);
-      setToastNotifications(storedNotifications.filter((n) => !n.isRead).slice(0, 3));
+      setNotifications([]);
+      setNotificationHistory([]);
+      setUnreadCount(0);
+      setToastNotifications([]);
     }
     setNotificationLoading(false);
+  };
+
+  const formatDate = (dateString) => {
+    try {
+      const date = parseISO(dateString);
+      if (isNaN(date)) return 'Invalid date';
+      const dateInIST = addHours(date, 5.5);
+      const now = new Date();
+      const diffInHours = (now - dateInIST) / (1000 * 60 * 60);
+
+      if (diffInHours < 1) return 'Just now';
+      if (diffInHours < 24) return `${Math.floor(diffInHours)}h ago`;
+      if (diffInHours < 48) return 'Yesterday';
+      return dateInIST.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+        ...(dateInIST.getFullYear() !== now.getFullYear() && { year: 'numeric' }),
+      });
+    } catch (error) {
+      console.error('Error parsing date:', dateString, error);
+      return 'Invalid date';
+    }
   };
 
   const playNotificationSound = () => {
     if (!notificationSettings.soundEnabled) return;
     const audio = new Audio('/assets/notification-sound.wav');
-    audio.play().catch((err) => console.warn('Audio play failed:', err));
+    audio.play().catch(err => console.warn('Audio play failed:', err));
   };
 
   const scrollToTask = (taskId) => {
@@ -1440,11 +1769,8 @@ function UserView() {
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
       try {
-        console.log(`Attempt ${attempt} to initialize SignalR connection`);
         const token = await acquireToken('api');
-        if (!token) {
-          throw new Error('Failed to acquire authentication token');
-        }
+        if (!token) throw new Error('Failed to acquire authentication token');
 
         socketRef.current = new HubConnectionBuilder()
           .withUrl(`${SOCKET_URL}/feedbackHub`, {
@@ -1455,26 +1781,33 @@ function UserView() {
           .build();
 
         socketRef.current.on('newFeedback', async (notification) => {
+          if (!isKeysFetched) {
+            setQueuedNotifications(prev => [...prev, notification]);
+            return;
+          }
+          const fifteenDaysAgo = subDays(new Date(), 60);
+          const notificationDate = new Date(notification.sentAt);
+          if (notificationDate < fifteenDaysAgo) return;
+
           const managerName = await fetchManagerName(notification.managerId);
           const newNotification = {
             ...notification,
             managerName,
             isRead: false,
+            sentAt: notificationDate.toISOString(),
           };
-          setNotifications((prev) => {
-            const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id)];
-            saveNotificationsToStorage(updated);
+          setNotifications(prev => {
+            const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id)];
             return updated;
           });
-          setNotificationHistory((prev) => {
-            const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id)];
-            saveNotificationHistoryToStorage(updated);
-            return updated;
+          setNotificationHistory(prev => {
+            const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id)];
+            return updated.sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
           });
-          setUnreadCount((prev) => prev + 1);
-          setToastNotifications((prev) => {
-            const updated = [newNotification, ...prev.filter((n) => n.id !== newNotification.id).slice(0, 2)];
-            return updated.filter((n) => !n.isRead);
+          setUnreadCount(prev => prev + 1);
+          setToastNotifications(prev => {
+            const updated = [newNotification, ...prev.filter(n => n.id !== newNotification.id).slice(0, 2)];
+            return updated.filter(n => !n.isRead);
           });
           setNewNotificationPulse(true);
           setTimeout(() => setNewNotificationPulse(false), 2000);
@@ -1482,38 +1815,42 @@ function UserView() {
         });
 
         socketRef.current.on('bulkFeedback', async (feedbacks) => {
+          if (!isKeysFetched) {
+            setQueuedNotifications(prev => [...prev, ...feedbacks.filter(fb => fb.userId === user.id)]);
+            return;
+          }
+          const fifteenDaysAgo = subDays(new Date(), 60);
           const notificationsWithNames = await Promise.all(
             feedbacks
-              .filter((fb) => fb.userId === user.id)
+              .filter(fb => fb.userId === user.id && new Date(fb.sentAt) >= fifteenDaysAgo)
               .map(async (notification) => ({
                 ...notification,
                 managerName: await fetchManagerName(notification.managerId),
                 isRead: notification.isRead || false,
+                sentAt: new Date(notification.sentAt).toISOString(),
               }))
           );
-          setNotifications((prev) => {
+          setNotifications(prev => {
             const updated = [
               ...notificationsWithNames,
-              ...prev.filter((n) => !notificationsWithNames.some((newN) => newN.id === n.id)),
+              ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
             ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
-            saveNotificationsToStorage(updated);
-            return updated;
+            return updated.filter(n => !n.isRead);
           });
-          setNotificationHistory((prev) => {
+          setNotificationHistory(prev => {
             const updated = [
               ...notificationsWithNames,
-              ...prev.filter((n) => !notificationsWithNames.some((newN) => newN.id === n.id)),
+              ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
             ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
-            saveNotificationHistoryToStorage(updated);
             return updated;
           });
-          setUnreadCount((prev) => prev + notificationsWithNames.filter((n) => !n.isRead).length);
-          setToastNotifications((prev) => {
+          setUnreadCount(prev => prev + notificationsWithNames.filter(n => !n.isRead).length);
+          setToastNotifications(prev => {
             const updated = [
-              ...notificationsWithNames.filter((n) => !n.isRead).slice(0, 3 - prev.length),
+              ...notificationsWithNames.filter(n => !n.isRead).slice(0, 3 - prev.length),
               ...prev,
             ].slice(0, 3);
-            return updated.filter((n) => !n.isRead);
+            return updated.filter(n => !n.isRead);
           });
           setNewNotificationPulse(true);
           setTimeout(() => setNewNotificationPulse(false), 2000);
@@ -1521,47 +1858,143 @@ function UserView() {
         });
 
         socketRef.current.onclose(() => {
-          console.warn('SignalR disconnected');
           setNotificationError('Real-time updates are unavailable. Notifications will update periodically.');
         });
 
         socketRef.current.onreconnected(async () => {
-          console.log('SignalR reconnected');
           await socketRef.current.invoke('JoinUser', user.id);
           setNotificationError(null);
         });
 
         await socketRef.current.start();
         await socketRef.current.invoke('JoinUser', user.id);
-        console.log('SignalR connection established successfully');
         return;
       } catch (error) {
         console.error(`Attempt ${attempt} failed to initialize SignalR:`, error);
         if (attempt < maxRetries) {
           const delay = baseDelay * Math.pow(2, attempt - 1);
-          await new Promise((resolve) => setTimeout(resolve, delay));
+          await new Promise(resolve => setTimeout(resolve, delay));
         } else {
-          console.error('All retries failed to initialize SignalR connection');
           setNotificationError('Real-time updates are unavailable. Notifications will update periodically.');
         }
       }
     }
   };
 
+  const markAsRead = async (notificationId) => {
+    try {
+      setNotifications(prev => {
+        const notification = prev.find(n => n.id === notificationId);
+        if (!notification) return prev;
+        const updated = prev.filter(n => n.id !== notificationId);
+        setNotificationHistory(prevHistory => {
+          const updatedHistory = [
+            { ...notification, isRead: true },
+            ...prevHistory.filter(n => n.id !== notificationId),
+          ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+          return updatedHistory;
+        });
+        return updated;
+      });
+      setToastNotifications(prev => prev.filter(n => n.id !== notificationId));
+      setUnreadCount(prev => Math.max(0, prev - 1));
+      setRemovingNotifications(prev => new Set(prev).add(notificationId));
+
+      await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/${notificationId}/read`, 'PUT');
+
+      setTimeout(() => {
+        setRemovingNotifications(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(notificationId);
+          return newSet;
+        });
+      }, 600);
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+      setNotificationError('Failed to mark notification as read. Please try again.');
+      await fetchNotifications();
+    }
+  };
+
+  const markAllAsRead = async () => {
+    try {
+      setNotifications([]);
+      setNotificationHistory(prev => prev.map(n => ({ ...n, isRead: true })));
+      setToastNotifications([]);
+      setUnreadCount(0);
+      setRemovingNotifications(new Set(notifications.map(n => n.id)));
+
+      await makeAuthenticatedRequest(`${FEEDBACK_ENDPOINT}/user/${user.id}/read-all`, 'PUT');
+
+      setTimeout(() => {
+        setRemovingNotifications(new Set());
+        setShowNotifications(false);
+      }, 600);
+    } catch (error) {
+      console.error('Error marking all as read:', error);
+      setNotificationError('Failed to mark all notifications as read. Please try again.');
+      await fetchNotifications();
+    }
+  };
+
   useEffect(() => {
-    if (!isAuthenticated || !user?.id) return;
+    if (!isAuthenticated || !user?.id) {
+      console.warn('Skipping initialization: not authenticated or missing user ID');
+      return;
+    }
 
     const initialize = async () => {
       setNotificationLoading(true);
-      await fetchNotifications();
+      for (let attempt = 1; attempt <= 5; attempt++) {
+        try {
+          console.log(`Attempt ${attempt} to fetch encryption keys from: ${ENCRYPTION_KEYS_ENDPOINT}`);
+          const token = await acquireToken('api');
+          if (!token) {
+            throw new Error('Failed to acquire authentication token');
+          }
+          const response = await axios.get(ENCRYPTION_KEYS_ENDPOINT, {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              'Content-Type': 'application/json',
+            },
+          });
+          console.log('Encryption keys response:', response.data);
+          if (response.data?.aesKey && response.data?.aesIV) {
+            setAesKey(response.data.aesKey);
+            setAesIV(response.data.aesIV);
+            setKeyError(null);
+            setIsKeysFetched(true);
+            break;
+          } else {
+            throw new Error('Invalid keys structure: missing aesKey or aesIV');
+          }
+        } catch (err) {
+          console.error(`Attempt ${attempt} failed to fetch encryption keys:`, {
+            message: err.message,
+            response: err.response?.data,
+            status: err.response?.status
+          });
+          setKeyError('Failed to fetch encryption keys');
+          if (attempt < 5) {
+            const delay = 2000 * Math.pow(2, attempt - 1);
+            console.log(`Retrying in ${delay}ms...`);
+            await new Promise(resolve => setTimeout(resolve, delay));
+          } else {
+            console.error('All retries failed to fetch encryption keys.');
+            setKeyError('Unable to fetch encryption keys. Notifications may display incomplete information.');
+          }
+        }
+      }
+
+      if (isKeysFetched) await fetchNotifications();
       await initSocket();
       setNotificationLoading(false);
     };
 
     initialize();
 
-    const notificationInterval = setInterval(() => {
-      fetchNotifications();
+    const notificationInterval = setInterval(async () => {
+      if (isKeysFetched) await fetchNotifications();
     }, notificationError ? 30000 : 60000);
 
     return () => {
@@ -1571,7 +2004,52 @@ function UserView() {
       }
       clearInterval(notificationInterval);
     };
-  }, [isAuthenticated, user?.id, notificationError]);
+  }, [isAuthenticated, user?.id, isKeysFetched, notificationError]);
+
+  useEffect(() => {
+    if (isKeysFetched && queuedNotifications.length > 0) {
+      const processQueued = async () => {
+        const fifteenDaysAgo = subDays(new Date(), 60);
+        const notificationsWithNames = await Promise.all(
+          queuedNotifications
+            .filter(n => new Date(n.sentAt) >= fifteenDaysAgo)
+            .map(async (notification) => ({
+              ...notification,
+              managerName: await fetchManagerName(notification.managerId),
+              isRead: notification.isRead || false,
+              sentAt: new Date(notification.sentAt).toISOString(),
+            }))
+        );
+        setNotifications(prev => {
+          const updated = [
+            ...notificationsWithNames,
+            ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
+          ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+          return updated.filter(n => !n.isRead);
+        });
+        setNotificationHistory(prev => {
+          const updated = [
+            ...notificationsWithNames,
+            ...prev.filter(n => !notificationsWithNames.some(newN => newN.id === n.id)),
+          ].sort((a, b) => new Date(b.sentAt) - new Date(a.sentAt));
+          return updated;
+        });
+        setUnreadCount(prev => prev + notificationsWithNames.filter(n => !n.isRead).length);
+        setToastNotifications(prev => {
+          const updated = [
+            ...notificationsWithNames.filter(n => !n.isRead).slice(0, 3 - prev.length),
+            ...prev,
+          ].slice(0, 3);
+          return updated.filter(n => !n.isRead);
+        });
+        setNewNotificationPulse(true);
+        setTimeout(() => setNewNotificationPulse(false), 2000);
+        playNotificationSound();
+        setQueuedNotifications([]);
+      };
+      processQueued();
+    }
+  }, [isKeysFetched, queuedNotifications]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -1618,11 +2096,11 @@ function UserView() {
     const timers = toastNotifications.map((notification, index) => {
       if (notification.isRead || notification.paused) return null;
       return setTimeout(() => {
-        setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
+        setToastNotifications(prev => prev.filter(n => n.id !== notification.id));
       }, notificationSettings.toastDuration + index * 500);
     });
 
-    return () => timers.forEach((timer) => timer && clearTimeout(timer));
+    return () => timers.forEach(timer => timer && clearTimeout(timer));
   }, [toastNotifications, notificationSettings]);
 
   useEffect(() => {
@@ -1632,50 +2110,119 @@ function UserView() {
     }
   }, [notifications, unreadCount, showNotifications, removingNotifications, showHistory]);
 
+  // Helper function to format date for API
+  const formatToDDMMYYYY = (dateStr) => {
+    if (!dateStr) return null;
+    try {
+      const [year, month, day] = dateStr.split('-');
+      return `${day}-${month}-${year}`;
+    } catch (e) {
+      console.error('Invalid date format:', dateStr);
+      return null;
+    }
+  };
+
   useEffect(() => {
-    if (!isAuthenticated || isLoading || !user?.id) return;
+    if (!isAuthenticated || isLoading || !user?.id) {
+      console.warn('Skipping fetchTasksAndSubtasks: not authenticated, loading, or missing user ID', {
+        isAuthenticated,
+        isLoading,
+        userId: user?.id
+      });
+      return;
+    }
 
     const fetchTasksAndSubtasks = async () => {
       try {
+        const filterParams = {
+          pageNumber: currentPage,
+          pageSize: tasksPerPage,
+          priority: activeFilters.priority || null,
+          status: activeFilters.status || null,
+          startDate: formatToDDMMYYYY(activeFilters.startDate) || null,
+          dueDate: formatToDDMMYYYY(activeFilters.dueDate) || null,
+          searchTerm: searchQuery.trim() || activeFilters.searchTerm.trim() || null,
+          assignedTo: activeFilters.assignedTo || null,
+          hasSubtasks: activeFilters.hasSubtasks || null,
+        };
+
+        console.log('Fetching tasks with params:', filterParams);
+
         const response = await makeAuthenticatedRequest(
-          `${API_ENDPOINT}?pageNumber=${currentPage}&pageSize=${tasksPerPage}`
+          `${API_ENDPOINT}/GetAllTasks`,
+          'GET',
+          null,
+          filterParams
         );
-        let processedTasks = response.data.map((task) => ({
-          ...task,
-          id: task.id || task.Id || task.taskId || task.TaskId,
-          taskName: task.taskName || task.TaskName,
-          steps: [],
-          subTasksCount: task.subTasksCount || 0,
-        }));
+
+        // Validate response structure
+        if (!response || !response.data || !Array.isArray(response.data)) {
+          throw new Error('Invalid response format: data is missing or not an array');
+        }
+
+        if (!response.pagination) {
+          console.warn('Pagination data missing in response, using default pagination');
+          response.pagination = {
+            totalCount: response.data.length,
+            pageNumber: currentPage,
+            pageSize: tasksPerPage,
+            totalPages: Math.ceil(response.data.length / tasksPerPage),
+            hasPreviousPage: currentPage > 1,
+            hasNextPage: response.data.length === tasksPerPage
+          };
+        }
+
+        let processedTasks = response.data.map((task, index) => {
+          if (!task) {
+            console.warn(`Task at index ${index} is null or undefined`);
+            return null;
+          }
+          return {
+            ...task,
+            id: task.id || task.Id || task.taskId || task.TaskId || `temp-${Math.random()}`,
+            taskName: task.taskName || task.TaskName || '',
+            steps: [],
+            subTasksCount: task.subTasksCount || 0,
+          };
+        }).filter(task => task !== null);
 
         let subtasks = [];
         try {
           const subtaskData = await makeAuthenticatedRequest(SUBTASK_ENDPOINT);
-          subtasks = Array.isArray(subtaskData)
-            ? subtaskData
-                .map((subtask) => {
-                  if (!subtask || typeof subtask !== 'object') return null;
-                  return {
-                    id: (subtask.Id || subtask.id || subtask.subtaskId || subtask.subTaskId || `temp-${Math.random()}`).toString(),
-                    name: subtask.SubTaskName || subtask.subTaskName || subtask.subtaskName || subtask.sub_task_name || '',
-                    description: subtask.Description || subtask.description || subtask.subTaskDescription || '',
-                    startDate: (subtask.StartDate || subtask.startDate || subtask.start_date)?.split('T')[0] || '',
-                    dueDate: (subtask.DueDate || subtask.dueDate || subtask.due_date)?.split('T')[0] || '',
-                    status: subtask.Status || subtask.status || subtask.subTaskStatus || 'Not Started',
-                    estimatedHours: parseFloat(subtask.EstimatedHours || subtask.estimatedHours || subtask.estimated_hours || 0),
-                    completedHours: parseFloat(subtask.CompletedHours || subtask.completedHours || subtask.completed_hours || 0),
-                    completed: (subtask.Status || subtask.status || subtask.subTaskStatus) === 'Completed',
-                    priority: subtask.Priority || subtask.priority || 'Medium',
-                    taskId: subtask.TaskItemId || subtask.taskItemId || subtask.taskId || subtask.task_item_id || null,
-                  };
-                })
-                .filter((subtask) => subtask !== null)
-            : [];
+          if (!Array.isArray(subtaskData)) {
+            console.warn('Subtask data is not an array:', subtaskData);
+          } else {
+            subtasks = subtaskData
+              .map((subtask, index) => {
+                if (!subtask || typeof subtask !== 'object') {
+                  console.warn(`Subtask at index ${index} is invalid:`, subtask);
+                  return null;
+                }
+                return {
+                  id: (subtask.Id || subtask.id || subtask.subtaskId || subtask.subTaskId || `temp-${Math.random()}`).toString(),
+                  name: subtask.SubTaskName || subtask.subTaskName || subtask.subtaskName || subtask.sub_task_name || '',
+                  description: subtask.Description || subtask.description || subtask.subTaskDescription || '',
+                  startDate: (subtask.StartDate || subtask.startDate || subtask.start_date)?.split('T')[0] || '',
+                  dueDate: (subtask.DueDate || subtask.dueDate || subtask.due_date)?.split('T')[0] || '',
+                  status: subtask.Status || subtask.status || subtask.subTaskStatus || 'Not Started',
+                  estimatedHours: parseFloat(subtask.EstimatedHours || subtask.estimatedHours || subtask.estimated_hours || 0),
+                  completedHours: parseFloat(subtask.CompletedHours || subtask.completedHours || subtask.completed_hours || 0),
+                  completed: (subtask.Status || subtask.status || subtask.subTaskStatus) === 'Completed',
+                  priority: subtask.Priority || subtask.priority || 'Medium',
+                  taskId: subtask.TaskItemId || subtask.taskItemId || subtask.taskId || subtask.task_item_id || null,
+                };
+              })
+              .filter(subtask => subtask !== null);
+          }
         } catch (subtaskError) {
           console.warn('Subtask endpoint failed, continuing with tasks only:', subtaskError.message);
         }
 
-        processedTasks = processedTasks.map((task) => {
+        processedTasks = processedTasks.map((task, index) => {
+          if (!task) {
+            console.warn(`Processed task at index ${index} is null`);
+            return null;
+          }
           const taskSteps = subtasks.filter((subtask) => subtask?.taskId && subtask.taskId.toString() === task.id.toString());
           return {
             ...task,
@@ -1685,13 +2232,30 @@ function UserView() {
             completedHours: taskSteps.reduce((total, step) => total + (parseFloat(step.completedHours) || 0), 0) || task.completedHours || 0,
             status: taskSteps.length > 0 && taskSteps.every((step) => step.status === 'Completed') ? 'Completed' : task.status || 'Not Started',
           };
-        });
+        }).filter(task => task !== null);
+
+        if (processedTasks.length === 0) {
+          console.warn('No valid tasks after processing');
+        }
 
         setTaskList(processedTasks);
+        setFilteredTasks(processedTasks);
         setPaginationData(response.pagination);
-        applyFilters(processedTasks, searchQuery, activeFilters);
       } catch (error) {
-        console.error('Error fetching tasks:', error);
+        console.error('Error fetching tasks:', error, {
+          currentPage,
+          filterParams: {
+            pageNumber: currentPage,
+            pageSize: tasksPerPage,
+            priority: activeFilters.priority,
+            status: activeFilters.status,
+            startDate: activeFilters.startDate,
+            dueDate: activeFilters.dueDate,
+            searchTerm: searchQuery || activeFilters.searchTerm,
+            assignedTo: activeFilters.assignedTo,
+            hasSubtasks: activeFilters.hasSubtasks,
+          }
+        });
         alert(`Failed to load tasks for page ${currentPage}: ${error.message || 'Please try again.'}`);
         setTaskList([]);
         setFilteredTasks([]);
@@ -1707,7 +2271,7 @@ function UserView() {
     };
 
     fetchTasksAndSubtasks();
-  }, [refreshTrigger, isAuthenticated, isLoading, user?.id, currentPage]);
+  }, [refreshTrigger, isAuthenticated, isLoading, user?.id, currentPage, searchQuery]);
 
   const parseDDMMYYYY = (dateStr) => {
     if (!dateStr) return null;
@@ -1739,7 +2303,7 @@ function UserView() {
   const handleCreateTask = async (newTask) => {
     try {
       setTaskList((prev) => [newTask, ...prev]);
-      applyFilters([newTask, ...taskList], searchQuery, activeFilters);
+      setFilteredTasks((prev) => [newTask, ...prev]);
       setCurrentPage(1);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
@@ -1749,15 +2313,18 @@ function UserView() {
   };
 
   const handleOnSearch = (query) => {
-    setSearchQuery(query);
-    applyFilters(taskList, query, activeFilters);
+    const trimmedQuery = query.trim();
+    setSearchQuery(trimmedQuery);
+    setActiveFilters((prev) => ({ ...prev, searchTerm: trimmedQuery }));
+    setCurrentPage(1);
+    setRefreshTrigger((prev) => prev + 1);
   };
 
-  const handleFilterChange = (filters) => {
+  const handleFilterChange = ({ tasks, filters }) => {
     const mergedFilters = { ...activeFilters, ...filters };
     setActiveFilters(mergedFilters);
-    applyFilters(taskList, searchQuery, mergedFilters);
-
+    setFilteredTasks(tasks || []);
+    setCurrentPage(1);
     const count = Object.values(mergedFilters).filter((value) => value !== null && value !== '' && !(Array.isArray(value) && value.length === 0)).length;
     setFilterCount(count);
   };
@@ -1766,7 +2333,9 @@ function UserView() {
     const emptyFilters = { priority: '', status: '', startDate: '', dueDate: '', assignedTo: '', hasSubtasks: null, searchTerm: '' };
     setActiveFilters(emptyFilters);
     setFilterCount(0);
-    applyFilters(taskList, searchQuery, emptyFilters);
+    setSearchQuery('');
+    setCurrentPage(1);
+    setRefreshTrigger((prev) => prev + 1);
     setShowFilter(false);
   };
 
@@ -1787,71 +2356,9 @@ function UserView() {
     setIsAddModalOpen(true);
   };
 
-  const applyFilters = (tasks, query, filters) => {
-    let result = [...tasks];
-
-    if (query) {
-      const searchLower = query.toLowerCase();
-      result = result.filter((task) => task.taskName.toLowerCase().includes(searchLower) || (task.description && task.description.toLowerCase().includes(searchLower)));
-    }
-
-    if (filters.searchTerm) {
-      const searchLower = filters.searchTerm.toLowerCase();
-      result = result.filter((task) => task.taskName.toLowerCase().includes(searchLower) || (task.description && task.description.toLowerCase().includes(searchLower)));
-    }
-
-    if (filters.priority) {
-      result = result.filter((task) => task.priority === filters.priority);
-    }
-
-    if (filters.status) {
-      result = result.filter((task) => task.status === filters.status);
-    }
-
-    if (filters.startDate || filters.dueDate) {
-      result = result.filter((task) => {
-        const taskStartDate = parseDDMMYYYY(task.startDate);
-        const taskDueDate = parseDDMMYYYY(task.dueDate);
-        const filterStartDate = parseDDMMYYYY(filters.startDate);
-        const filterDueDate = parseDDMMYYYY(filters.dueDate);
-
-        if (filterStartDate && !filterDueDate) {
-          return taskStartDate && isSameDate(taskStartDate, filterStartDate);
-        }
-        if (filterDueDate && !filterStartDate) {
-          return taskDueDate && isSameDate(taskDueDate, filterDueDate);
-        }
-        if (filterStartDate && filterDueDate) {
-          return (
-            taskStartDate &&
-            taskDueDate &&
-            (isSameDate(taskStartDate, filterStartDate) || taskStartDate >= filterStartDate) &&
-            (isSameDate(taskDueDate, filterDueDate) || taskDueDate <= filterDueDate)
-          );
-        }
-        return true;
-      });
-    }
-
-    if (filters.assignedTo) {
-      if (filters.assignedTo === 'unassigned') {
-        result = result.filter((task) => !task.assignedTo);
-      } else if (filters.assignedTo === 'me') {
-        const currentUser = user?.id || 'Current User';
-        result = result.filter((task) => task.assignedTo === currentUser);
-      } else {
-        result = result.filter((task) => task.assignedTo === filters.assignedTo);
-      }
-    }
-
-    if (filters.hasSubtasks !== null) {
-      result = result.filter((task) => {
-        const hasChildTasks = task.steps && task.steps.length > 0;
-        return filters.hasSubtasks ? hasChildTasks : !hasChildTasks;
-      });
-    }
-
-    setFilteredTasks(result);
+  const handlePageChange = (pageNumber) => {
+    setCurrentPage(pageNumber);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const prepareTasksForGantt = (tasks) => {
@@ -1870,11 +2377,6 @@ function UserView() {
         }
         return task;
       });
-  };
-
-  const handlePageChange = (pageNumber) => {
-    setCurrentPage(pageNumber);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const ganttReadyTasks = prepareTasksForGantt(filteredTasks);
@@ -1919,6 +2421,11 @@ function UserView() {
           }
         `}
       </style>
+      {keyError && (
+        <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-4">
+          {keyError}
+        </div>
+      )}
       {notificationError && (
         <div className="bg-red-50 border border-red-200 text-red-600 p-4 rounded-lg mb-4">
           {notificationError}
@@ -1926,7 +2433,7 @@ function UserView() {
             onClick={async () => {
               setNotificationError(null);
               await initSocket();
-              await fetchNotifications();
+              if (isKeysFetched) await fetchNotifications();
             }}
             className="ml-4 text-sm text-purple-600 hover:text-purple-800 font-medium"
           >
@@ -1941,6 +2448,7 @@ function UserView() {
               <h3 className="text-xl font-bold text-gray-800">Notification Details</h3>
               <button
                 onClick={() => {
+                  markAsRead(selectedNotification.id);
                   setIsNotificationModalOpen(false);
                 }}
                 className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-full transition-colors"
@@ -1955,7 +2463,7 @@ function UserView() {
               </div>
               <div className="flex items-center gap-2 text-sm text-gray-600">
                 <Clock className="w-4 h-4 text-purple-600" />
-                <span>Sent: {selectedNotification.sentAt}</span>
+                <span>Sent: {formatDate(selectedNotification.sentAt)}</span>
               </div>
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <p className="text-sm text-gray-700 leading-relaxed">{selectedNotification.message}</p>
@@ -1966,6 +2474,7 @@ function UserView() {
                 <button
                   onClick={() => {
                     scrollToTask(selectedNotification.taskId);
+                    markAsRead(selectedNotification.id);
                     setIsNotificationModalOpen(false);
                     setShowNotifications(false);
                     setShowHistory(false);
@@ -2048,13 +2557,17 @@ function UserView() {
             } hover:shadow-xl group animate-slide-in-right`}
             style={{ marginBottom: `${index * 0.75}rem` }}
             onMouseEnter={() => {
-              setToastNotifications((prev) =>
-                prev.map((n) => (n.id === notification.id ? { ...n, paused: true } : n))
+              setToastNotifications(prev =>
+                prev.map(n =>
+                  n.id === notification.id ? { ...n, paused: true } : n
+                )
               );
             }}
             onMouseLeave={() => {
-              setToastNotifications((prev) =>
-                prev.map((n) => (n.id === notification.id ? { ...n, paused: false } : n))
+              setToastNotifications(prev =>
+                prev.map(n =>
+                  n.id === notification.id ? { ...n, paused: false } : n
+                )
               );
             }}
           >
@@ -2068,7 +2581,7 @@ function UserView() {
                     <User className="w-4 h-4" />
                     <span className="font-medium">{notification.managerName}</span>
                   </div>
-                  <span className="text-xs text-gray-500">{notification.sentAt}</span>
+                  <span className="text-xs text-gray-500">{formatDate(notification.sentAt)}</span>
                 </div>
                 <p className="text-sm text-gray-700 line-clamp-2">{notification.message}</p>
                 {!notification.isRead && (
@@ -2083,21 +2596,7 @@ function UserView() {
                       View
                     </button>
                     <button
-                      onClick={() => {
-                        setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-                        setRemovingNotifications((prev) => {
-                          const newSet = new Set(prev);
-                          newSet.add(notification.id);
-                          return newSet;
-                        });
-                        setTimeout(() => {
-                          setRemovingNotifications((prev) => {
-                            const newSet = new Set(prev);
-                            newSet.delete(notification.id);
-                            return newSet;
-                          });
-                        }, 600);
-                      }}
+                      onClick={() => markAsRead(notification.id)}
                       className="text-xs text-gray-500 hover:text-gray-700 font-medium"
                     >
                       Dismiss
@@ -2106,21 +2605,7 @@ function UserView() {
                 )}
               </div>
               <button
-                onClick={() => {
-                  setToastNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-                  setRemovingNotifications((prev) => {
-                    const newSet = new Set(prev);
-                    newSet.add(notification.id);
-                    return newSet;
-                  });
-                  setTimeout(() => {
-                    setRemovingNotifications((prev) => {
-                      const newSet = new Set(prev);
-                      newSet.delete(notification.id);
-                      return newSet;
-                    });
-                  }, 600);
-                }}
+                onClick={() => markAsRead(notification.id)}
                 className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X className="w-4 h-4" />
@@ -2197,6 +2682,7 @@ function UserView() {
                 </button>
                 {!showHistory && unreadCount > 0 && (
                   <button
+                    onClick={markAllAsRead}
                     className="text-sm text-purple-600 hover:text-purple-800 font-medium flex items-center gap-1"
                   >
                     <CheckCircle2 className="h-4 w-4" />
@@ -2218,7 +2704,7 @@ function UserView() {
                       onClick={async () => {
                         setNotificationError(null);
                         await initSocket();
-                        await fetchNotifications();
+                        if (isKeysFetched) await fetchNotifications();
                       }}
                       className="px-4 py-1.5 bg-purple-600 text-white rounded-lg text-sm hover:bg-purple-700"
                     >
@@ -2237,11 +2723,18 @@ function UserView() {
                     {(showHistory ? notificationHistory : notifications).map((notification) => (
                       <div
                         key={notification.id}
-                        className={`relative p-4 rounded-lg border transition-all duration-300 ${
+                        className={`relative p-4 rounded-lg border transition-all duration-300 cursor-pointer ${
                           notification.isRead
                             ? 'border-gray-200 bg-white'
                             : 'border-purple-200 bg-purple-50 hover:bg-purple-100'
                         } ${removingNotifications.has(notification.id) ? 'opacity-0 translate-y-4' : ''}`}
+                        onClick={() => {
+                          setSelectedNotification(notification);
+                          setIsNotificationModalOpen(true);
+                          if (!notification.isRead) {
+                            markAsRead(notification.id);
+                          }
+                        }}
                       >
                         {!notification.isRead && (
                           <span className="absolute top-2 right-2 h-2 w-2 bg-purple-600 rounded-full animate-pulse" />
@@ -2259,12 +2752,13 @@ function UserView() {
                                 </div>
                                 <p className="text-sm text-gray-700 line-clamp-2">{notification.message}</p>
                               </div>
-                              <span className="text-xs text-gray-500 whitespace-nowrap">{notification.sentAt}</span>
+                              <span className="text-xs text-gray-500 whitespace-nowrap">{formatDate(notification.sentAt)}</span>
                             </div>
-                            {!notification.isRead && (
+                            {!showHistory && !notification.isRead && (
                               <div className="mt-2 flex gap-2">
                                 <button
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     setSelectedNotification(notification);
                                     setIsNotificationModalOpen(true);
                                   }}
@@ -2274,20 +2768,9 @@ function UserView() {
                                   View
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    setNotifications((prev) => prev.filter((n) => n.id !== notification.id));
-                                    setRemovingNotifications((prev) => {
-                                      const newSet = new Set(prev);
-                                      newSet.add(notification.id);
-                                      return newSet;
-                                    });
-                                    setTimeout(() => {
-                                      setRemovingNotifications((prev) => {
-                                        const newSet = new Set(prev);
-                                        newSet.delete(notification.id);
-                                        return newSet;
-                                      });
-                                    }, 600);
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    markAsRead(notification.id);
                                   }}
                                   className="text-xs text-gray-500 hover:text-gray-700 font-medium"
                                 >
@@ -2336,7 +2819,7 @@ function UserView() {
             </button>
           </div>
           <div className="flex-grow min-w-[200px] md:max-w-md">
-            <SearchBar placeholder="Search tasks..." onSearch={handleOnSearch} className="w-full" />
+            <SearchBar placeholder="Search tasks by name or description..." onSearch={handleOnSearch} className="w-full" />
           </div>
           <div className="flex gap-3 flex-shrink-0 items-center justify-end flex-wrap">
             <div className="relative">
@@ -2349,7 +2832,7 @@ function UserView() {
                 className={`relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-colors ${newNotificationPulse ? 'animate-pulse' : ''}`}
                 aria-label="Toggle notifications"
               >
-                <Bell className="h-6 h-6" />
+                <Bell className="h-6 w-6" />
                 {unreadCount > 0 && (
                   <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                     {unreadCount > 9 ? '9+' : unreadCount}
@@ -2391,7 +2874,7 @@ function UserView() {
                   </>
                 )}
               </Button>
-              {showFilter && <Filter onFilterChange={handleFilterChange} onClose={() => setShowFilter(false)} />}
+              {showFilter && <FilterModal onFilterChange={handleFilterChange} onClose={() => setShowFilter(false)} />}
             </div>
             <Button onClick={handleAddTask} className="flex items-center gap-1.5 whitespace-nowrap">
               <BadgePlus className="w-4 h-4" />
@@ -2411,7 +2894,7 @@ function UserView() {
         makeAuthenticatedRequest={makeAuthenticatedRequest}
         dependencyTaskId={0}
       />
-      {viewMode === 'list' && taskList.length > 0 && (
+      {viewMode === 'list' && taskList.length > 0 && filteredTasks.length > 0 && (
         <TaskList
           taskList={filteredTasks}
           setTaskList={setTaskList}
@@ -2429,13 +2912,10 @@ function UserView() {
       )}
       {viewMode === 'list' && taskList.length > 0 && filteredTasks.length === 0 && (
         <div className="bg-white rounded-lg shadow p-8 text-center">
-          <div className="text-gray-500 mb-2">No tasks match your current filters</div>
-          {filterCount > 0 && (
-            <Button
-              onClick={handleClearFilters}
-              className="mt-2"
-            >
-              Clear All Filters
+          <div className="text-gray-500 mb-2">No tasks match your current filters or search query</div>
+          {(filterCount > 0 || searchQuery) && (
+            <Button onClick={handleClearFilters} className="mt-2">
+              Clear All Filters and Search
             </Button>
           )}
         </div>

@@ -382,7 +382,7 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask, taskToEdit, m
               </div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Done Hours</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Time Invested</label>
               <input
                 type="number"
                 name="completedHours"

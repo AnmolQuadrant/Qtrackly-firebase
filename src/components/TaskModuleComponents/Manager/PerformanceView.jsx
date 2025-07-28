@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -8,8 +9,20 @@ import { makeAuthenticatedRequest } from './utils';
 import { BarChart2, Clock, CheckCircle, AlertTriangle, Percent, Clock4, Truck } from 'lucide-react';
 import { fetchEncryptionKeys } from '../../services/apiClient';
 import { decryptString } from '../../services/decrypt';
- 
-const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, searchQuery, months }) => {
+import PerformanceCharts from './PerformanceCharts';
+
+const PerformanceView = ({
+  viewType,
+  selectedYear,
+  selectedMonth,
+  selectedWeek,
+  searchQuery,
+  months,
+  selectedDepartment,
+  selectedSubDepartment,
+  selectedManager,
+  showCharts,
+}) => {
   const [tasks, setTasks] = useState([]);
   const [performanceLoading, setPerformanceLoading] = useState(false);
   const [performanceError, setPerformanceError] = useState(null);
@@ -28,75 +41,105 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
   const [aesKey, setAesKey] = useState(null);
   const [aesIV, setAesIV] = useState(null);
   const [keyError, setKeyError] = useState(null);
- 
+
   const { acquireToken, isAuthenticated, isLoading, user } = useAuth();
-  const managerId = user?.id; // Use 'id' instead of 'userId' based on user object structure
+  const managerId = user?.id;
   const TASKS_URL = 'http://localhost:5181/api/Task/alltaskforPerformance';
   const USER_ALL_URL = 'http://localhost:5181/api/User/all';
   const FEEDBACK_API_URL = 'http://localhost:5181/api/Feedback';
   const BROADCAST_FEEDBACK_API_URL = 'http://localhost:5181/api/Feedback/broadcast';
- console.log(managerId);
+
   // Debug: Log the user object to monitor changes
   useEffect(() => {
     console.log('Auth user object:', user);
   }, [user]);
- 
+
+  // Fetch encryption keys
   useEffect(() => {
     const fetchData = async () => {
       try {
         console.log('Starting to fetch encryption keys...');
-        try {
-          const keys = await fetchEncryptionKeys();
-          console.log('Keys fetched:', keys);
-          if (keys && keys.aesKey && keys.aesIV) {
-            setAesKey(keys.aesKey);
-            setAesIV(keys.aesIV);
-          } else {
-            throw new Error('Invalid keys structure');
-          }
-        } catch (keyError) {
-          console.error('Failed to fetch encryption keys:', keyError);
-          setKeyError(keyError.message);
+        const keys = await fetchEncryptionKeys();
+        console.log('Keys fetched:', keys);
+        if (keys && keys.aesKey && keys.aesIV) {
+          setAesKey(keys.aesKey);
+          setAesIV(keys.aesIV);
+        } else {
+          throw new Error('Invalid keys structure');
         }
-      } catch (error) {
-        console.error('Error in fetchData:', error);
+      } catch (keyError) {
+        console.error('Failed to fetch encryption keys:', keyError);
+        setKeyError(keyError.message);
       }
     };
- 
+
     fetchData();
   }, []);
- 
+
+  // Fetch performance data with filters
   const fetchPerformanceData = useCallback(async () => {
     if (!isAuthenticated || isLoading) return;
     setPerformanceLoading(true);
     setPerformanceError(null);
     try {
-      const allUsers = await makeAuthenticatedRequest(USER_ALL_URL, 'GET', null, acquireToken);
+      // Construct query parameters for user and task APIs
+      const queryParams = new URLSearchParams({
+        year: selectedYear,
+        month: selectedMonth + 1,
+        ...(viewType === 'Weekly' && { week: selectedWeek }),
+        ...(selectedDepartment !== 'All Departments' && { department: selectedDepartment }),
+        ...(selectedSubDepartment !== 'All Sub-Departments' && { subDepartment: selectedSubDepartment }),
+        ...(selectedManager !== 'All Managers' && { manager: selectedManager }),
+      }).toString();
+
+      // Fetch users with filters
+      const usersUrl = `${USER_ALL_URL}?${queryParams}`;
+      const allUsers = await makeAuthenticatedRequest(usersUrl, 'GET', null, acquireToken);
       const newUserMap = allUsers.reduce((acc, user) => {
-        acc[user.userId] = user.name;
+        acc[user.userId] = {
+          name: user.name,
+          department: user.department,
+          subDepartment: user.subDepartment,
+          manager: user.manager,
+        };
         return acc;
       }, {});
-      const tasksData = await makeAuthenticatedRequest(TASKS_URL, 'GET', null, acquireToken);
+
+      // Fetch tasks with filters
+      const tasksUrl = `${TASKS_URL}?${queryParams}`;
+      const tasksData = await makeAuthenticatedRequest(tasksUrl, 'GET', null, acquireToken);
+
+      // Filter tasks to ensure they match the selected filters
+      const filteredTasks = tasksData.filter(task => {
+        const user = allUsers.find(u => u.userId === task.createdBy);
+        if (!user) return false;
+        return (
+          (selectedDepartment === 'All Departments' || user.department === selectedDepartment) &&
+          (selectedSubDepartment === 'All Sub-Departments' || user.subDepartment === selectedSubDepartment) &&
+          (selectedManager === 'All Managers' || user.manager === selectedManager)
+        );
+      });
+
       setUserMap(newUserMap);
-      setTasks(tasksData || []);
+      setTasks(filteredTasks || []);
     } catch (err) {
       setPerformanceError(err.message);
       console.error('Error fetching performance data:', err);
     } finally {
       setPerformanceLoading(false);
     }
-  }, [isAuthenticated, isLoading, acquireToken]);
- 
+  }, [isAuthenticated, isLoading, acquireToken, selectedYear, selectedMonth, selectedWeek, selectedDepartment, selectedSubDepartment, selectedManager]);
+
   useEffect(() => {
     fetchPerformanceData();
   }, [fetchPerformanceData]);
- 
+
   useEffect(() => {
     if (showFeedbackModal && feedbackInputRef.current) {
       feedbackInputRef.current.focus();
     }
   }, [showFeedbackModal]);
- 
+
   const getFilteredTasks = () => {
     if (!tasks || tasks.length === 0) return [];
     return tasks.filter(task => {
@@ -118,18 +161,19 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       }
     });
   };
- 
+
   const filteredTasksByPeriod = getFilteredTasks();
- 
+
   const calculatePerformanceMetrics = useMemo(() => {
     if (!filteredTasksByPeriod.length) return [];
     const performanceMap = {};
     filteredTasksByPeriod.forEach(task => {
       const userId = task.createdBy;
+      if (!userMap[userId]) return; // Skip if user not in filtered userMap
       if (!performanceMap[userId]) {
         performanceMap[userId] = {
           userId,
-          name: decryptString(userMap[userId], aesKey, aesIV) || `User ${userId.slice(0, 8)}`,
+          name: (decryptString(userMap[userId].name, aesKey, aesIV) || `User ${userId.slice(0, 8)}`).replace(' (Quadrant Technologies)', ''),
           estimatedHours: 0,
           actualHours: 0,
           onTime: 0,
@@ -147,7 +191,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       if (isOverdue) userPerf.overdue += 1;
       else userPerf.onTime += 1;
     });
- 
+
     return Object.values(performanceMap)
       .filter(user => !searchQuery || user.name.toLowerCase().includes(searchQuery.toLowerCase()))
       .map(user => {
@@ -167,7 +211,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
         };
       });
   }, [filteredTasksByPeriod, userMap, searchQuery, aesKey, aesIV]);
- 
+
   const performanceData = useMemo(() => {
     let baseData = calculatePerformanceMetrics;
     switch (performanceFilter) {
@@ -185,7 +229,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
         return baseData;
     }
   }, [calculatePerformanceMetrics, performanceFilter]);
- 
+
   const calculateKPIs = () => {
     let tasksToAnalyze = filteredTasksByPeriod;
     if (selectedUser) {
@@ -232,9 +276,9 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       onTimeDelivery,
     };
   };
- 
+
   const kpis = calculateKPIs();
- 
+
   const getPeriodDescription = () => {
     switch (viewType) {
       case 'Weekly':
@@ -247,7 +291,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
         return '';
     }
   };
- 
+
   const handleUserClick = (user) => {
     if (selectedUser?.userId === user.userId) {
       setSelectedUser(null);
@@ -256,7 +300,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
     }
     setActionMenuUserId(null);
   };
- 
+
   const toggleActionMenu = (userId, e) => {
     e.stopPropagation();
     if (actionMenuUserId === userId) {
@@ -265,7 +309,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       setActionMenuUserId(userId);
     }
   };
- 
+
   const openSendFeedback = (user, e) => {
     e.stopPropagation();
     setActionMenuUserId(null);
@@ -273,7 +317,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
     setFeedbackMessage('');
     setShowFeedbackModal(true);
   };
- 
+
   const sendCustomFeedback = async () => {
     if (!feedbackMessage.trim()) {
       alert('Please enter feedback message');
@@ -309,16 +353,16 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       alert('Failed to send feedback: ' + (e.message || e));
     }
   };
- 
+
   const toggleFilterMenu = () => {
     setFilterMenuOpen(prev => !prev);
   };
- 
+
   const handleFilterChange = (newFilter) => {
     setPerformanceFilter(newFilter);
     setFilterMenuOpen(false);
   };
- 
+
   const filterDisplayNames = {
     all: 'All Users',
     'flagged-any': 'Flagged Users - Any',
@@ -326,11 +370,11 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
     'flagged-underlogged': 'Flagged Users - Under Logged',
     'non-flagged': 'Non Flagged Users',
   };
- 
+
   const getFilteredUserIds = () => {
     return performanceData.map(u => u.userId);
   };
- 
+
   const sendBroadcastNotification = async () => {
     if (!broadcastMessage.trim()) {
       alert('Please enter a broadcast message');
@@ -374,7 +418,24 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
       setBroadcastSending(false);
     }
   };
- 
+
+  if (showCharts) {
+    return (
+      <PerformanceCharts
+        performanceData={performanceData}
+        filteredTasksByPeriod={filteredTasksByPeriod}
+        selectedUser={selectedUser}
+        viewType={viewType}
+        selectedYear={selectedYear}
+        selectedMonth={selectedMonth}
+        months={months}
+        selectedDepartment={selectedDepartment}
+        selectedSubDepartment={selectedSubDepartment}
+        selectedManager={selectedManager}
+      />
+    );
+  }
+
   return (
     <motion.div
       className="space-y-6"
@@ -390,12 +451,12 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
         transition={{ duration: 0.4 }}
       >
         <div>
-          <h2 className="text-xl font-semibold text-gray-800">
-            {selectedUser ? `Performance Metrics for ${selectedUser.name}` : 'Overall Performance Metrics (All Users)'}
+          <h2 className="text-2xl font-bold text-violet-900">
+            {selectedUser ? `Performance Metrics for ${selectedUser.name}` : 'Performance Metrics (All Users)'}
           </h2>
           <p className="text-sm text-gray-600 mt-1">Period: {getPeriodDescription()}</p>
         </div>
- 
+
         <div className="flex items-center space-x-4 relative">
           <button
             type="button"
@@ -417,7 +478,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
               <path d="M6 8l4 4 4-4" />
             </svg>
           </button>
- 
+
           <button
             type="button"
             onClick={() => setShowBroadcastModal(true)}
@@ -426,7 +487,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
           >
             Send Notification
           </button>
- 
+
           <AnimatePresence>
             {filterMenuOpen && (
               <motion.div
@@ -517,7 +578,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
           </AnimatePresence>
         </div>
       </motion.div>
- 
+
       {filteredTasksByPeriod.length === 0 ? (
         <motion.div
           className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 text-center"
@@ -568,20 +629,14 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
                 bg: 'bg-purple-50',
                 color: 'text-purple-700',
                 subtext: `${kpis.completedTasks} of ${kpis.totalTasks} tasks`,
-                icon: (
-                  <div className='flex items-center justify-center'>
-                    <Percent className="h-8 w-8" />
-                  </div>),
+                icon: (<div className='flex items-center justify-center'><Percent className="h-8 w-8" /></div>),
               },
               {
                 label: 'Avg Task Time',
                 value: `${kpis.avgTaskTimeDays.toFixed(1)} Hrs`,
                 bg: 'bg-zinc-50',
                 color: 'text-gray-900',
-                icon: (
-                  <div className='flex items-center justify-center'>
-                    <Clock4 className="h-8 w-8" />
-                  </div>),
+                icon: (<div className='flex items-center justify-center'><Clock4 className="h-8 w-8" /></div>),
               },
               {
                 label: 'On-Time Delivery',
@@ -589,10 +644,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
                 bg: 'bg-emerald-50',
                 color: 'text-green-700',
                 subtext: `${kpis.onTimeTasks} of ${kpis.totalTasks} tasks`,
-                icon: (
-                  <div className='flex items-center justify-center'>
-                    <Truck className="h-8 w-8" />
-                  </div>),
+                icon: (<div className='flex items-center justify-center'><Truck className="h-8 w-8" /></div>),
               },
             ].map((kpi, idx) => (
               <motion.div
@@ -611,7 +663,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
               </motion.div>
             ))}
           </motion.div>
- 
+
           {/* Performance Table */}
           <motion.div
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6"
@@ -761,7 +813,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
               </div>
             )}
           </motion.div>
- 
+
           {/* Custom feedback modal */}
           <AnimatePresence>
             {showFeedbackModal && feedbackUser && (
@@ -825,7 +877,7 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
               </motion.div>
             )}
           </AnimatePresence>
- 
+
           {/* Broadcast notification modal */}
           <AnimatePresence>
             {showBroadcastModal && (
@@ -892,5 +944,8 @@ const PerformanceView = ({ viewType, selectedYear, selectedMonth, selectedWeek, 
     </motion.div>
   );
 };
- 
+
 export default PerformanceView;
+
+
+

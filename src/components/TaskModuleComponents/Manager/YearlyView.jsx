@@ -1,138 +1,5 @@
-// import React, { useMemo,useState,useEffect } from 'react';
 
-// import { motion } from 'framer-motion';
-// import LoadingSpinner from '../../common-components/LoadingSpinner';
-// import ErrorMessage from '../../common-components/ErrorMessage';
-// import EmptyState from '../../common-components/EmptyState';
-//  import { decryptString } from '../../services/decrypt';
-//  import { fetchEncryptionKeys } from '../../services/apiClient';
-// const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
-//  const [aesKey, setAesKey] = useState(null);
-//  const [aesIV, setAesIV] = useState(null);
-//  const [keyError, setKeyError] = useState(null);
- 
-//  // Updated fetchData function
-//  useEffect(() => {
-//    const fetchData = async () => {
-//      try {
-//        console.log('Starting to fetch encryption keys...');
-       
-//        // Fetch encryption keys first
-//        try {
-//          const keys = await fetchEncryptionKeys();
-//          console.log('Keys fetched:', keys);
-         
-//          if (keys && keys.aesKey && keys.aesIV) {
-//            setAesKey(keys.aesKey);
-//            setAesIV(keys.aesIV);
-//          } else {
-//            throw new Error('Invalid keys structure');
-//          }
-//        } catch (keyError) {
-//          console.error('Failed to fetch encryption keys:', keyError);
-//          setKeyError(keyError.message);
-//          // You can still continue with the rest of the data fetching
-//          // or return early if keys are critical
-//        }
-     
-//      } catch (error) {
-//        console.error('Error in fetchData:', error);
-
-//      }
-//    };
- 
-//    fetchData();
-//  }, []); 
-    
-//   const monthKeys = [
-//     'jan', 'feb', 'mar', 'apr', 'may', 'jun',
-//     'jul', 'aug', 'sep', 'oct', 'nov', 'dec'
-//   ];
-//   const filteredYearlyData = yearlyData.filter(row =>
-//     !searchQuery || row.name.toLowerCase().includes(searchQuery.toLowerCase())
-//   );
- 
-//   const calculateMonthlyTotals = useMemo(() => {
-//     if (!yearlyData.length) return {};
-//     return months.reduce((acc, _, idx) => {
-//       const key = months[idx].toLowerCase().trim().slice(0, 3);
-//       const total = yearlyData.reduce((sum, row) => sum + (Number(row[key]) || 0), 0);
-//       return { ...acc, [key]: total };
-//     }, {});
-//   }, [yearlyData, months]);
- 
-//   return (
-//     <motion.div
-//       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
-//       initial={{ opacity: 0, scale: 0.98 }}
-//       animate={{ opacity: 1, scale: 1 }}
-//       transition={{ duration: 0.5 }}
-//     >
-//       {loading ? (
-//         <LoadingSpinner />
-//       ) : error ? (
-//         <ErrorMessage message={error} />
-//       ) : filteredYearlyData.length === 0 ? (
-//         <EmptyState />
-//       ) : (
-//         <div className="overflow-x-auto">
-//           <table className="w-full border-collapse">
-//             <thead>
-//               <tr className="bg-gradient-to-r from-violet-600 to-violet-700 text-white">
-//                 <th className="sticky left-0 bg-gradient-to-r from-violet-600 to-violet-700 py-4 px-6 text-left font-semibold z-10 min-w-[150px]">Name</th>
-//                 {months.map(m => (
-//                   <th key={m} className="text-center py-4 px-3 font-semibold min-w-[70px] text-sm">
-//                     {m.slice(0, 3)}
-//                   </th>
-//                 ))}
-//                 <th className="text-center py-4 px-4 font-semibold bg-violet-800 min-w-[80px]">Total</th>
-//               </tr>
-//             </thead>
-//             <tbody>
-//               <motion.tr
-//                 className="bg-gradient-to-r from-violet-50 to-violet-100 border-b-2 border-violet-200 font-semibold"
-//                 initial={{ opacity: 0, x: -20 }}
-//                 animate={{ opacity: 1, x: 0 }}
-//                 transition={{ duration: 0.3 }}
-//               >
-//                 <td className="sticky left-0 bg-gradient-to-r from-violet-50 to-violet-100 py-4 px-6 font-bold text-violet-700 z-10">Total Working Hours</td>
-//                 {monthKeys.map(mk => (
-//                   <td key={mk} className="text-center py-4 px-3 font-bold text-violet-600">
-//                     {calculateMonthlyTotals[mk] || 0}
-//                   </td>
-//                 ))}
-//                 <td className="text-center py-4 px-4 font-bold text-violet-700 bg-violet-100">
-//                   {Object.values(calculateMonthlyTotals).reduce((sum, v) => sum + v, 0)}
-//                 </td>
-//               </motion.tr>
-//               {filteredYearlyData.map((row, idx) => {
-//                 const total = monthKeys.reduce((sum, mk) => sum + (Number(row[mk]) || 0), 0);
-//                 return (
-//                   <motion.tr
-//                     key={row.name + idx}
-//                     className={`${idx % 2 === 0 ? 'bg-white' : 'bg-violet-25'} hover:bg-violet-50 transition-colors`}
-//                     initial={{ opacity: 0, x: -20 }}
-//                     animate={{ opacity: 1, x: 0 }}
-//                     transition={{ duration: 0.3, delay: idx * 0.05 }}
-//                   >
-//                     <td className="sticky left-0 bg-inherit py-4 px-6 font-medium text-gray-900 z-0">{decryptString(row.name,aesKey,aesIV)}</td>
-//                     {monthKeys.map(mk => (
-//                       <td key={mk} className="text-center py-4 px-3 text-gray-700 font-medium">{row[mk]}</td>
-//                     ))}
-//                     <td className="text-center py-4 px-4 font-bold text-violet-600 bg-violet-50">{total}</td>
-//                   </motion.tr>
-//                 );
-//               })}
-//             </tbody>
-//           </table>
-//         </div>
-//       )}
-//     </motion.div>
-//   );
-// };
- 
-// export default YearlyView;
-import React, { useState, useEffect, useMemo } from 'react';
+ import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import LoadingSpinner from '../../common-components/LoadingSpinner';
 import ErrorMessage from '../../common-components/ErrorMessage';
@@ -177,7 +44,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
       return encryptedName;
     }
     try {
-      const decrypted = decryptString(encryptedName, aesKey, aesIV) || 'Unnamed';
+      const decrypted = (decryptString(encryptedName, aesKey, aesIV) || 'Unnamed').replace(' (Quadrant Technologies)', '');
       console.log(`YearlyView - Decrypted name for row ${rowIndex}:`, decrypted);
       return decrypted;
     } catch (err) {
@@ -321,4 +188,5 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
 };
  
 export default YearlyView;
+ 
  

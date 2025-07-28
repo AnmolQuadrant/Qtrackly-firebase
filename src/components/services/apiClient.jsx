@@ -233,10 +233,10 @@ export const fetchUsers = async () => {
 // ✅ Use apiClient instead of direct axios
 export const submitDependencyRequest = async (payload) => {
   try {
-    console.log(payload);
+    //console.log(payload);
     const response = await apiClient.post("/User", payload); // Use apiClient with relative URL
-    console.log("request form");
-    console.debug("Submitted dependency request:", response.data);
+    //console.log("request form");
+    //console.debug("Submitted dependency request:", response.data);
     return response;
   } catch (error) {
     console.error("Error submitting dependency request:", {

@@ -1,4 +1,6 @@
-// import React, { useEffect } from 'react';
+
+
+// import React, { useEffect, useState } from 'react';
 // import { ChevronRight, ChevronDown, Link, Edit, Trash2, Plus } from 'lucide-react';
 // import DependencySection from './DependencySection';
 // import SubtaskRow from './SubtaskRow';
@@ -26,9 +28,10 @@
 //     setTaskList
 // }) {
 //     const { acquireToken } = useAuth();
+//     const [showAlert, setShowAlert] = useState(false);
 //     const isCompleted = task.status === 'Completed';
 //     const isNotStarted = task.status === 'Not Started';
-//     const canAddSubtasks = task.hasSubtask === 'Yes'; // Use hasSubtask from backend
+//     const canAddSubtasks = task.hasSubtask === 'Yes';
 //     const API_ENDPOINT = 'http://localhost:5181/api/Task';
 
 //     const getAuthHeaders = async () => {
@@ -65,45 +68,33 @@
 //         const isOvertime = completed > estimated;
 //         let progress;
 //         if (completed === estimated && task.status !== 'Completed') {
-//             progress = 90; // Show 90% when completed hours equal estimated hours and task is not completed
+//             progress = 90;
 //         } else {
 //             progress = Math.min(100, Math.round((completed / estimated) * 100));
 //         }
 //         return { progress, isOvertime };
 //     };
 
-//     // Calculate task status based on subtasks
 //     const calculateTaskStatus = (steps) => {
-//         // Return existing task status if no subtasks exist
 //         if (!steps || steps.length === 0) return task.status;
-
-//         // Check if any subtask is In Progress (takes precedence)
 //         if (steps.some(step => step.status === 'In Progress')) {
 //             return 'In Progress';
 //         }
-
-//         // Check if all subtasks are Completed
 //         if (steps.every(step => step.status === 'Completed')) {
 //             return 'Completed';
 //         }
-
-//         // Check if all subtasks are Not Started
 //         if (steps.every(step => step.status === 'Not Started')) {
 //             return 'Not Started';
 //         }
-
-//         // Default to In Progress for mixed statuses (e.g., some Completed, some Not Started)
 //         return 'In Progress';
 //     };
 
-//     // Update task status when subtask statuses change
 //     useEffect(() => {
 //         if (task.steps && task.steps.length > 0 && !isCompleted) {
 //             console.log('TaskRow useEffect triggered for task:', task.id, 'Steps:', task.steps);
 //             const newStatus = calculateTaskStatus(task.steps);
 //             if (newStatus !== task.status) {
 //                 console.log(`Task ${task.id} status changing from ${task.status} to ${newStatus}`);
-//                 // Update local state immediately for UI responsiveness
 //                 setTaskList(prev => prev.map(t =>
 //                     t.id.toString() === task.id.toString()
 //                         ? { ...t, status: newStatus }
@@ -116,10 +107,10 @@
 //                         await axios.patch(`${API_ENDPOINT}/UpdateTask`, {
 //                             TaskId: task.id,
 //                             Status: newStatus,
-//                             Priority: task.priority, // Preserve existing priority
-//                             WorkedHours: 0, // No hours updated for status change
-//                             UpdateDate: new Date().toISOString(), // Current time in UTC
-//                             HasSubtask: task.hasSubtask // Preserve existing HasSubtask
+//                             Priority: task.priority,
+//                             WorkedHours: 0,
+//                             UpdateDate: new Date().toISOString(),
+//                             HasSubtask: task.hasSubtask
 //                         }, config);
 //                         console.log(`Task ${task.id} status updated to ${newStatus} in backend`);
 //                     } catch (error) {
@@ -137,7 +128,6 @@
 //         }
 //     }, [task.steps, task.status, task.id, setTaskList, acquireToken, isCompleted]);
 
-//     // Filter out undefined or null dependency tasks
 //     const validDependencyTasks = dependencyTasks;
 //     const validDependentTasks = dependentTasks;
 
@@ -163,10 +153,37 @@
 //         }
 //     };
 
+//     const handleDeleteTask = (taskId) => {
+//         deleteTask(taskId);
+//         setShowAlert(true);
+//     };
+
+//     // Ensure alert stays for 10 seconds and prevent multiple timers
+//     useEffect(() => {
+//         let timer;
+//         if (showAlert) {
+//             timer = setTimeout(() => {
+//                 setShowAlert(false);
+//             }, 3000); // Auto-dismiss after 10 seconds
+//         }
+//         return () => clearTimeout(timer); // Cleanup to prevent multiple timers
+//     }, [showAlert]);
+
 //     const { progress, isOvertime } = calculateProgress(task);
 
+//     const maxTaskNameLength = 13;
+//     const truncatedTaskName = task.taskName.length > maxTaskNameLength
+//         ? `${task.taskName.substring(0, maxTaskNameLength - 3)}...`
+//         : task.taskName;
+
 //     return (
-//         <div className="border-b border-gray-200">
+//         <div className="relative border-b border-gray-200">
+//             {/* Side Alert Bar */}
+//             {showAlert && (
+//                 <div className="fixed top-4 right-4 bg-purple-600 text-white p-4 rounded-lg shadow-lg z-50 animate-slide-in">
+//                     Task "{truncatedTaskName}" deleted successfully!
+//                 </div>
+//             )}
 //             <div className="grid grid-cols-8 py-4 px-4">
 //                 <div className="flex items-center gap-3">
 //                     <button
@@ -183,8 +200,11 @@
 //                         )}
 //                     </button>
 //                     <div className="flex flex-col gap-1">
-//                         <span className={`font-medium text-gray-800 text-base ${isExpanded ? 'font-semibold' : ''}`}>
-//                             {task.taskName}
+//                         <span
+//                             className={`font-medium text-gray-800 text-base ${isExpanded ? 'font-semibold' : ''}`}
+//                             title={task.taskName}
+//                         >
+//                             {truncatedTaskName}
 //                         </span>
 //                         {task.steps && task.steps.length > 0 && (
 //                             <span className="text-xs text-gray-600 font-medium">
@@ -244,7 +264,7 @@
 //                         onClick={(e) => {
 //                             e.stopPropagation();
 //                             if (isNotStarted) {
-//                                 deleteTask(task.id);
+//                                 handleDeleteTask(task.id);
 //                             }
 //                         }}
 //                         className={`p-1 rounded transition-colors ${isNotStarted ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'}`}
@@ -293,6 +313,21 @@
 //                     />
 //                 </div>
 //             )}
+//             <style jsx>{`
+//                 .animate-slide-in {
+//                     animation: slideIn 0.3s ease-out;
+//                 }
+//                 @keyframes slideIn {
+//                     from {
+//                         transform: translateX(100%);
+//                         opacity: 0;
+//                     }
+//                     to {
+//                         transform: translateX(0);
+//                         opacity: 1;
+//                     }
+//                 }
+//             `}</style>
 //         </div>
 //     );
 // }
@@ -326,8 +361,7 @@
 // export default TaskRow;
 
 
-
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { ChevronRight, ChevronDown, Link, Edit, Trash2, Plus } from 'lucide-react';
 import DependencySection from './DependencySection';
 import SubtaskRow from './SubtaskRow';
@@ -355,9 +389,16 @@ function TaskRow({
     setTaskList
 }) {
     const { acquireToken } = useAuth();
+    const [showAlert, setShowAlert] = useState(false);
+    const [showDeleteConfirmation, setShowDeleteConfirmation] = useState(false);
+    const [deletedTaskName, setDeletedTaskName] = useState('');
+    const [taskToDelete, setTaskToDelete] = useState(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+    const alertTimerRef = useRef(null);
+    
     const isCompleted = task.status === 'Completed';
     const isNotStarted = task.status === 'Not Started';
-    const canAddSubtasks = task.hasSubtask === 'Yes'; // Use hasSubtask from backend
+    const canAddSubtasks = task.hasSubtask === 'Yes';
     const API_ENDPOINT = 'http://localhost:5181/api/Task';
 
     const getAuthHeaders = async () => {
@@ -394,45 +435,33 @@ function TaskRow({
         const isOvertime = completed > estimated;
         let progress;
         if (completed === estimated && task.status !== 'Completed') {
-            progress = 90; // Show 90% when completed hours equal estimated hours and task is not completed
+            progress = 90;
         } else {
             progress = Math.min(100, Math.round((completed / estimated) * 100));
         }
         return { progress, isOvertime };
     };
 
-    // Calculate task status based on subtasks
     const calculateTaskStatus = (steps) => {
-        // Return existing task status if no subtasks exist
         if (!steps || steps.length === 0) return task.status;
-
-        // Check if any subtask is In Progress (takes precedence)
         if (steps.some(step => step.status === 'In Progress')) {
             return 'In Progress';
         }
-
-        // Check if all subtasks are Completed
         if (steps.every(step => step.status === 'Completed')) {
             return 'Completed';
         }
-
-        // Check if all subtasks are Not Started
         if (steps.every(step => step.status === 'Not Started')) {
             return 'Not Started';
         }
-
-        // Default to In Progress for mixed statuses (e.g., some Completed, some Not Started)
         return 'In Progress';
     };
 
-    // Update task status when subtask statuses change
     useEffect(() => {
         if (task.steps && task.steps.length > 0 && !isCompleted) {
             console.log('TaskRow useEffect triggered for task:', task.id, 'Steps:', task.steps);
             const newStatus = calculateTaskStatus(task.steps);
             if (newStatus !== task.status) {
                 console.log(`Task ${task.id} status changing from ${task.status} to ${newStatus}`);
-                // Update local state immediately for UI responsiveness
                 setTaskList(prev => prev.map(t =>
                     t.id.toString() === task.id.toString()
                         ? { ...t, status: newStatus }
@@ -445,10 +474,10 @@ function TaskRow({
                         await axios.patch(`${API_ENDPOINT}/UpdateTask`, {
                             TaskId: task.id,
                             Status: newStatus,
-                            Priority: task.priority, // Preserve existing priority
-                            WorkedHours: 0, // No hours updated for status change
-                            UpdateDate: new Date().toISOString(), // Current time in UTC
-                            HasSubtask: task.hasSubtask // Preserve existing HasSubtask
+                            Priority: task.priority,
+                            WorkedHours: 0,
+                            UpdateDate: new Date().toISOString(),
+                            HasSubtask: task.hasSubtask
                         }, config);
                         console.log(`Task ${task.id} status updated to ${newStatus} in backend`);
                     } catch (error) {
@@ -466,7 +495,6 @@ function TaskRow({
         }
     }, [task.steps, task.status, task.id, setTaskList, acquireToken, isCompleted]);
 
-    // Filter out undefined or null dependency tasks
     const validDependencyTasks = dependencyTasks;
     const validDependentTasks = dependentTasks;
 
@@ -492,16 +520,221 @@ function TaskRow({
         }
     };
 
+    const handleDeleteButtonClick = (e) => {
+        e.stopPropagation();
+        if (isNotStarted) {
+            // Store task information for confirmation dialog
+            const maxTaskNameLength = 13;
+            const taskName = task.taskName.length > maxTaskNameLength
+                ? `${task.taskName.substring(0, maxTaskNameLength - 3)}...`
+                : task.taskName;
+            
+            setTaskToDelete({ id: task.id, name: taskName, fullName: task.taskName });
+            setShowDeleteConfirmation(true);
+            
+        }
+    };
+
+
+    const confirmDelete = async () => {
+    if (taskToDelete) {
+        setIsDeleting(true);
+
+        try {
+            const taskNameForAlert = taskToDelete.name;
+
+            await deleteTask(taskToDelete.id);
+
+            setShowDeleteConfirmation(false);
+            setTaskToDelete(null);
+            setIsDeleting(false);
+
+            setTimeout(() => {
+                setDeletedTaskName(taskNameForAlert);
+                setShowAlert(true);
+
+                // ✅ Show toast instead of alert
+                toast.success(`Task "${taskNameForAlert}" deleted successfully!`, {
+                    position: "top-right",
+                    autoClose: 3000,
+                    hideProgressBar: false,
+                    closeOnClick: true,
+                    pauseOnHover: true,
+                    draggable: true,
+                });
+            }, 200);
+
+        } catch (error) {
+            console.error('Error deleting task:', error);
+            setIsDeleting(false);
+
+            // ❌ Replace error alert with toast too
+            toast.error('Failed to delete task. Please try again.', {
+                position: "top-right",
+                autoClose: 3000,
+            });
+        }
+    }
+};
+
+    // const confirmDelete = async () => {
+    //     if (taskToDelete) {
+    //         setIsDeleting(true);
+            
+    //         try {
+    //             // Store the task name for the success alert
+    //             const taskNameForAlert = taskToDelete.name;
+                
+    //             // Perform the deletion and wait for it to complete
+    //             await deleteTask(taskToDelete.id);
+                
+    //             // Close confirmation dialog
+    //             setShowDeleteConfirmation(false);
+    //             setTaskToDelete(null);
+    //             setIsDeleting(false);
+                
+    //             // Show success alert after deletion is complete
+    //             // Add a small delay to ensure the UI has updated
+    //             setTimeout(() => {
+    //                 setDeletedTaskName(taskNameForAlert);
+    //                 setShowAlert(true);
+    //                 alert("task deleted")
+    //             }, 200);
+                
+    //         } catch (error) {
+    //             console.error('Error deleting task:', error);
+    //             setIsDeleting(false);
+    //             // You might want to show an error message here
+    //             alert('Failed to delete task. Please try again.');
+    //         }
+    //     }
+    // };
+
+    const cancelDelete = () => {
+        setShowDeleteConfirmation(false);
+        setTaskToDelete(null);
+    };
+
+    // Handle alert timing with improved cleanup
+    useEffect(() => {
+        if (showAlert) {
+            // Clear any existing timer
+            if (alertTimerRef.current) {
+                clearTimeout(alertTimerRef.current);
+            }
+            
+            // Set new timer for exactly 3 seconds
+            alertTimerRef.current = setTimeout(() => {
+                setShowAlert(false);
+                setDeletedTaskName('');
+            }, 3000);
+        }
+
+        // Cleanup function
+        return () => {
+            if (alertTimerRef.current) {
+                clearTimeout(alertTimerRef.current);
+                alertTimerRef.current = null;
+            }
+        };
+    }, [showAlert]);
+
+    // Cleanup timer on component unmount
+    useEffect(() => {
+        return () => {
+            if (alertTimerRef.current) {
+                clearTimeout(alertTimerRef.current);
+            }
+        };
+    }, []);
+
     const { progress, isOvertime } = calculateProgress(task);
 
-    // Truncate task name if it exceeds 30 characters
     const maxTaskNameLength = 13;
     const truncatedTaskName = task.taskName.length > maxTaskNameLength
         ? `${task.taskName.substring(0, maxTaskNameLength - 3)}...`
         : task.taskName;
 
     return (
-        <div className="border-b border-gray-200">
+        <div className="relative border-b border-gray-200">
+            {/* Delete Confirmation Modal */}
+            {showDeleteConfirmation && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+                        <div className="flex items-center mb-4">
+                            <div className="flex-shrink-0 w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                                <Trash2 className="w-5 h-5 text-red-600" />
+                            </div>
+                            <div className="ml-3">
+                                <h3 className="text-lg font-medium text-gray-900">Delete Task</h3>
+                            </div>
+                        </div>
+                        <div className="mb-6">
+                            <p className="text-sm text-gray-600">
+                                Are you sure you want to delete the task{' '}
+                                <span className="font-semibold text-gray-900" title={taskToDelete?.fullName}>
+                                    "{taskToDelete?.name}"
+                                </span>
+                                ? This action cannot be undone.
+                            </p>
+                        </div>
+                        <div className="flex justify-end space-x-3">
+                            <button
+                                onClick={cancelDelete}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={confirmDelete}
+                                disabled={isDeleting}
+                                className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center"
+                            >
+                                {isDeleting ? (
+                                    <>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                                        Deleting...
+                                    </>
+                                ) : (
+                                    'Delete Task'
+                                )}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Success Alert */}
+            {showAlert && deletedTaskName && (
+                <div className="fixed top-4 right-4 bg-green-600 text-white p-4 rounded-lg shadow-lg z-50 animate-slide-in">
+                    <div className="flex items-center justify-between">
+                        <div className="flex items-center">
+                            <div className="flex-shrink-0 mr-3">
+                                <div className="w-6 h-6 bg-green-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white text-sm font-bold">✓</span>
+                                </div>
+                            </div>
+                            <span>Task "{deletedTaskName}" deleted successfully!</span>
+                        </div>
+                        <button
+                            onClick={() => {
+                                setShowAlert(false);
+                                setDeletedTaskName('');
+                                if (alertTimerRef.current) {
+                                    clearTimeout(alertTimerRef.current);
+                                    alertTimerRef.current = null;
+                                }
+                            }}
+                            className="ml-4 text-white hover:text-gray-200 font-bold text-lg"
+                            title="Close alert"
+                        >
+                            ×
+                        </button>
+                    </div>
+                </div>
+            )}
+
             <div className="grid grid-cols-8 py-4 px-4">
                 <div className="flex items-center gap-3">
                     <button
@@ -520,7 +753,7 @@ function TaskRow({
                     <div className="flex flex-col gap-1">
                         <span
                             className={`font-medium text-gray-800 text-base ${isExpanded ? 'font-semibold' : ''}`}
-                            title={task.taskName} // Full task name on hover
+                            title={task.taskName}
                         >
                             {truncatedTaskName}
                         </span>
@@ -579,12 +812,7 @@ function TaskRow({
                         <Edit className="w-4 h-4 text-blue-500" />
                     </button>
                     <button
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            if (isNotStarted) {
-                                deleteTask(task.id);
-                            }
-                        }}
+                        onClick={handleDeleteButtonClick}
                         className={`p-1 rounded transition-colors ${isNotStarted ? 'hover:bg-gray-200' : 'opacity-50 cursor-not-allowed'}`}
                         disabled={!isNotStarted}
                         title={isNotStarted ? 'Delete task' : 'Cannot delete task unless not started'}
@@ -631,6 +859,21 @@ function TaskRow({
                     />
                 </div>
             )}
+            <style jsx>{`
+                .animate-slide-in {
+                    animation: slideIn 0.3s ease-out;
+                }
+                @keyframes slideIn {
+                    from {
+                        transform: translateX(100%);
+                        opacity: 0;
+                    }
+                    to {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                }
+            `}</style>
         </div>
     );
 }
