@@ -361,7 +361,7 @@ const Login = () => {
       console.log("=====================");
  
       // Navigation logic based on data completeness
-      if (hasIncompleteData && decryptedRole=="admin") {
+      if (hasIncompleteData && decryptedRole=="user") {
         console.log("🔄 User has incomplete data - redirecting to department selector");
         setTimeout(() => {
           navigate("/department-selector", { replace: true });
