@@ -45,7 +45,7 @@ const Header = () => {
     if (hasRole("admin")) {
       items.push(
         // { label: "Admin Dashboard", path: "/admin", roles: ["admin"] },
-        { label: "User Management", path: "/admin/users", roles: ["admin"] }
+        { label: "User Management", path: "/admin", roles: ["admin"] }
      
       );
     }

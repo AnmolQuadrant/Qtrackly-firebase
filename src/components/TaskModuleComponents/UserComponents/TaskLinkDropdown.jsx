@@ -23,7 +23,7 @@ const TaskLinkDropdown = ({ request, handleLinkToExistingTask }) => {
  
       try {
         const token = await acquireToken('api');
-        const response = await axios.get('http://localhost:5181/api/Task/inprogress-tasks', {
+        const response = await axios.get('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task/inprogress-tasks', {
           headers: { Authorization: `Bearer ${token}` },
         });
  

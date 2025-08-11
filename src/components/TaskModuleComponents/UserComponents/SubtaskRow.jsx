@@ -9,7 +9,7 @@ function SubtaskRow({ step, taskId, setShowSubtaskModal, setEditingStepId, setSt
     const { acquireToken } = useAuth();
     const [showDescriptionId, setShowDescriptionId] = useState(null);
     const isInProgress = step.status === 'In Progress';
-    const SUBTASK_ENDPOINT = 'http://localhost:5181/api/SubTask';
+    const SUBTASK_ENDPOINT = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/SubTask';
 
     // Debug step data
     // console.log('SubtaskRow step:', step);

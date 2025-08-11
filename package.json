@@ -12,6 +12,7 @@
   "dependencies": {
     "@azure/msal-browser": "^4.12.0",
     "@azure/msal-react": "^3.0.12",
+    "@firebasegen/default-connector": "file:dataconnect-generated/js/default-connector",
     "@microsoft/signalr": "^8.0.7",
     "axios": "^1.9.0",
     "crypto-js": "^4.2.0",

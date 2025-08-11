@@ -181,18 +181,53 @@ export const AuthProvider = ({ children }) => {
   }, [userRoles]);
 
   // Check if user has specific role
+  // const hasRole = useCallback((role) => {
+  //   const normalizedUserRoles = userRoles.map(r => r.toLowerCase());
+  //   const normalizedRole = role.toLowerCase();
+    
+  //   // Admin has access to all roles
+  //   if (normalizedUserRoles.includes("admin")) return true;
+    
+  //   // Manager has access to user role
+  //   if (normalizedRole === "user" && normalizedUserRoles.includes("manager")) return true;
+    
+  //   return normalizedUserRoles.includes(normalizedRole);
+  // }, [userRoles]);
+
   const hasRole = useCallback((role) => {
-    const normalizedUserRoles = userRoles.map(r => r.toLowerCase());
-    const normalizedRole = role.toLowerCase();
+  // Handle edge cases
+  if (!userRoles || userRoles.length === 0) return false;
+  if (!role) return false;
+
+  const normalizedUserRoles = userRoles.map(r => r.toLowerCase());
+  
+  // Handle array input
+  if (Array.isArray(role)) {
+    const normalizedRoles = role.map(r => r.toLowerCase());
     
     // Admin has access to all roles
     if (normalizedUserRoles.includes("admin")) return true;
     
-    // Manager has access to user role
-    if (normalizedRole === "user" && normalizedUserRoles.includes("manager")) return true;
-    
-    return normalizedUserRoles.includes(normalizedRole);
-  }, [userRoles]);
+    // Check if user has any of the required roles
+    return normalizedRoles.some(requiredRole => {
+      // Manager has access to user role
+      if (requiredRole === "user" && normalizedUserRoles.includes("manager")) return true;
+      
+      return normalizedUserRoles.includes(requiredRole);
+    });
+  }
+  
+  // Handle string input (your original logic)
+  const normalizedRole = role.toLowerCase();
+  
+  // Admin has access to all roles
+  if (normalizedUserRoles.includes("admin")) return true;
+  
+  // Manager has access to user role
+  if (normalizedRole === "user" && normalizedUserRoles.includes("manager")) return true;
+  
+  return normalizedUserRoles.includes(normalizedRole);
+}, [userRoles]);
 
   // Retry failed operations
   const retry = useCallback(() => {

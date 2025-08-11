@@ -127,7 +127,7 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask, taskToEdit, m
         console.log('Updating task with payload:', formattedTask);
 
         if (makeAuthenticatedRequest) {
-          await makeAuthenticatedRequest('http://localhost:5181/api/Task/UpdateTask', 'PATCH', formattedTask);
+          await makeAuthenticatedRequest('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task/UpdateTask', 'PATCH', formattedTask);
         } else {
           const token = await acquireToken('api');
           if (!token) {
@@ -139,7 +139,7 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask, taskToEdit, m
             'Accept': '*/*',
             'Authorization': `Bearer ${token}`,
           };
-          await axios.patch('http://localhost:5181/api/Task/UpdateTask', formattedTask, { headers });
+          await axios.patch('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task/UpdateTask', formattedTask, { headers });
         }
       } else {
         // Create new task
@@ -163,9 +163,9 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask, taskToEdit, m
         let response;
         if (makeAuthenticatedRequest) {
           if (dependencyTaskId && dependencyTaskId > 0) {
-            response = await makeAuthenticatedRequest('http://localhost:5181/api/User/DependencyTask', 'POST', formattedTask);
+            response = await makeAuthenticatedRequest('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/User/DependencyTask', 'POST', formattedTask);
           } else {
-            response = await makeAuthenticatedRequest('http://localhost:5181/api/Task', 'POST', formattedTask);
+            response = await makeAuthenticatedRequest('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task', 'POST', formattedTask);
           }
         } else {
           const token = await acquireToken('api');
@@ -179,8 +179,8 @@ export default function AddTaskModal({ isOpen, onClose, onAddTask, taskToEdit, m
             'Authorization': `Bearer ${token}`,
           };
           const endpoint = dependencyTaskId && dependencyTaskId > 0
-            ? 'http://localhost:5181/api/User/DependencyTask'
-            : 'http://localhost:5181/api/Task';
+            ? 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/User/DependencyTask'
+            : 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task';
           response = await axios.post(endpoint, formattedTask, { headers });
         }
 

@@ -69,8 +69,8 @@ const ManagerDashboard = () => {
     'July', 'August', 'September', 'October', 'November', 'December',
   ];
 
-  const TASKS_URL = 'http://localhost:5181/api/Task/alltaskforPerformance';
-  const USER_ALL_URL = 'http://localhost:5181/api/User/all';
+  const TASKS_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task/alltaskforPerformance';
+  const USER_ALL_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/User/all';
 
   // Week options for the selected month
   const weekOptions = Array.from(
@@ -162,7 +162,7 @@ const ManagerDashboard = () => {
     setLoading(true);
     setError(null);
     try {
-      const API_BASE_URL = 'http://localhost:5181/api/ManagerDashboard';
+      const API_BASE_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/ManagerDashboard';
       let data;
       const queryParams = new URLSearchParams({
         year: selectedYear,

@@ -117,9 +117,9 @@ function SubtaskModal({ taskId, editingStepId, stepForm, setStepForm, onClose, o
       };
       let newSubtaskId = editingStepId;
       if (editingStepId) {
-        await axios.put(`http://localhost:5181/api/SubTask/${editingStepId}`, formattedSubtask, { headers });
+        await axios.put(`https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/SubTask/${editingStepId}`, formattedSubtask, { headers });
       } else {
-        const response = await axios.post('http://localhost:5181/api/SubTask', formattedSubtask, { headers });
+        const response = await axios.post('https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/SubTask', formattedSubtask, { headers });
         newSubtaskId = response.data.id;
       }
 

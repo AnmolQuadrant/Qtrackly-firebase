@@ -5,7 +5,7 @@ const apiRequest = async (method, endpoint, token, data = null) => {
   try {
     const config = {
       method,
-      url: `http://localhost:5181${endpoint}`,
+      url: `https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net${endpoint}`,
       headers: {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",

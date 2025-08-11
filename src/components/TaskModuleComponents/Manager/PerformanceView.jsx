@@ -44,10 +44,10 @@ const PerformanceView = ({
 
   const { acquireToken, isAuthenticated, isLoading, user } = useAuth();
   const managerId = user?.id;
-  const TASKS_URL = 'http://localhost:5181/api/Task/alltaskforPerformance';
-  const USER_ALL_URL = 'http://localhost:5181/api/User/all';
-  const FEEDBACK_API_URL = 'http://localhost:5181/api/Feedback';
-  const BROADCAST_FEEDBACK_API_URL = 'http://localhost:5181/api/Feedback/broadcast';
+  const TASKS_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task/alltaskforPerformance';
+  const USER_ALL_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/User/all';
+  const FEEDBACK_API_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Feedback';
+  const BROADCAST_FEEDBACK_API_URL = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Feedback/broadcast';
 
   // Debug: Log the user object to monitor changes
   useEffect(() => {
