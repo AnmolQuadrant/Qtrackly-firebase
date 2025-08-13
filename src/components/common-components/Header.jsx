@@ -90,12 +90,13 @@ const Header = () => {
 
   const getUserInitials = () => {
     if (!user?.name) return "U";
-    const names = user.name.split(" ");
+    const cleanName = user.name.replace(/\s*\(.*?\)\s*/, ""); // Remove text in parentheses
+    const names = cleanName.trim().split(" ");
     if (names.length >= 2) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
-    return user.name.charAt(0).toUpperCase();
-  };
+    return cleanName.charAt(0).toUpperCase();
+};
 
   const getRoleColor = () => {
     const primaryRole = getPrimaryRole();

@@ -266,7 +266,7 @@ const FocusBoard = ({ onBack }) => {
           <h1 className="text-3xl font-bold text-gray-900">Focus Board</h1>
           <Button onClick={onBack} className="flex items-center gap-1.5">
             <ArrowLeft className="w-4 h-4" />
-            Go Back to Home
+            Back to Home
           </Button>
         </div>
        

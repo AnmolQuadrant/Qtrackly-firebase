@@ -79,7 +79,7 @@ function UserView() {
 
   const { acquireToken, isAuthenticated, isLoading, user } = useAuth();
 
-  const API_ENDPOINT = 'https://https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task';
+  const API_ENDPOINT = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Task';
   const SUBTASK_ENDPOINT = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/SubTask';
   const FEEDBACK_ENDPOINT = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/Feedback';
   const USER_ENDPOINT = 'https://qtrackly-awd6egbkg8dbaeex.centralindia-01.azurewebsites.net/api/User/user1';
@@ -1467,3 +1467,4 @@ function UserView() {
 }
 
 export default UserView;
+

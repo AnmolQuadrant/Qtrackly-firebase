@@ -1,5 +1,3 @@
-
-
 import React, { useState } from 'react';
 import axios from 'axios';
 import Button from '../../common-components/Button';
@@ -96,24 +94,24 @@ function Filter({ onFilterChange, onClose }) {
     setStatus('');
     setStartDate('');
     setDueDate('');
-    try {
-      const config = await getAuthHeaders();
-      const response = await axios.get(API_ENDPOINT, {
-        ...config,
-        params: { pageNumber: 1, pageSize: 5 }
-      });
-      onFilterChange({
-        tasks: response.data.data,
-        filters: { priority: '', status: '', startDate: '', dueDate: '' }
-      });
-    } catch (error) {
-      console.error('Error clearing filters:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data
-      });
-      alert('Failed to clear filters. Please try again.');
-    }
+    // try {
+    //   const config = await getAuthHeaders();
+    //   const response = await axios.get(API_ENDPOINT, {
+    //     ...config,
+    //     params: { pageNumber: 1, pageSize: 5 }
+    //   });
+    //   onFilterChange({
+    //     tasks: response.data.data,
+    //     filters: { priority: '', status: '', startDate: '', dueDate: '' }
+    //   });
+    // } catch (error) {
+    //   console.error('Error clearing filters:', {
+    //     message: error.message,
+    //     status: error.response?.status,
+    //     data: error.response?.data
+    //   });
+    //   alert('Failed to clear filters. Please try again.');
+    // }
     onClose();
   };
 
@@ -176,7 +174,7 @@ function Filter({ onFilterChange, onClose }) {
       </div>
 
       <div className='mt-4 flex gap-4'>
-        <Button onClick={handleClear}>Clear</Button>
+        <Button onClick={handleClear}>Close</Button>
         <Button onClick={handleApply}>Apply</Button>
       </div>
     </div>
@@ -184,3 +182,4 @@ function Filter({ onFilterChange, onClose }) {
 }
 
 export default Filter;
+
