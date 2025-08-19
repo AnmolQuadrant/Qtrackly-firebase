@@ -1,17 +1,16 @@
-
- import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import LoadingSpinner from '../../common-components/LoadingSpinner';
 import ErrorMessage from '../../common-components/ErrorMessage';
 import EmptyState from '../../common-components/EmptyState';
 import { decryptString } from '../../services/decrypt';
 import { fetchEncryptionKeys } from '../../services/apiClient';
- 
+
 const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
   const [aesKey, setAesKey] = useState(null);
   const [aesIV, setAesIV] = useState(null);
   const [keyError, setKeyError] = useState(null);
- 
+
   // Fetch encryption keys
   useEffect(() => {
     const fetchKeys = async () => {
@@ -32,7 +31,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
     };
     fetchKeys();
   }, []);
- 
+
   // Helper function to decrypt names safely
   const getDecryptedName = (encryptedName, rowIndex) => {
     if (!encryptedName) {
@@ -52,7 +51,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
       return encryptedName;
     }
   };
- 
+
   // Cache decrypted names
   const decryptedNames = useMemo(() => {
     if (!yearlyData || !Array.isArray(yearlyData)) {
@@ -64,7 +63,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
       decryptedName: getDecryptedName(row.name || '', idx),
     }));
   }, [yearlyData, aesKey, aesIV, keyError]);
- 
+
   // Memoized filtered data
   const filteredYearlyData = useMemo(() => {
     if (!decryptedNames) return [];
@@ -76,9 +75,9 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
     console.log('YearlyView - filteredYearlyData:', filtered);
     return filtered;
   }, [decryptedNames, searchQuery]);
- 
+
   const monthKeys = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
- 
+
   const calculateMonthlyTotals = useMemo(() => {
     if (!yearlyData.length) return {};
     return months.reduce((acc, _, idx) => {
@@ -87,7 +86,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
       return { ...acc, [key]: total };
     }, {});
   }, [yearlyData, months]);
- 
+
   return (
     <motion.div
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
@@ -114,7 +113,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gradient-to-r from-violet-600 to-violet-700 text-white">
-                <th className="sticky left-0 bg-gradient-to-r from-violet-600 to-violet-700 py-4 px-6 text-left font-semibold z-10 min-w-[150px]">
+                <th className="sticky left-0 bg-gradient-to-r from-violet-600 to-violet-700 py-4 px-6 text-left font-semibold z-20 min-w-[150px] shadow-[4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                   Name
                 </th>
                 {months.map(m => (
@@ -137,7 +136,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                <td className="sticky left-0 bg-gradient-to-r from-violet-50 to-violet-100 py-4 px-6 font-bold text-violet-700 z-10">
+                <td className="sticky left-0 bg-gradient-to-r from-violet-50 to-violet-100 py-4 px-6 font-bold text-violet-700 z-20 shadow-[4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                   Total Working Hours
                 </td>
                 {monthKeys.map(mk => (
@@ -162,7 +161,7 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: idx * 0.05 }}
                   >
-                    <td className="sticky left-0 bg-inherit py-4 px-6 font-medium text-gray-900 z-0">
+                    <td className="sticky left-0 bg-inherit py-4 px-6 font-medium text-gray-900 z-20 shadow-[4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                       {row.decryptedName}
                     </td>
                     {monthKeys.map(mk => (
@@ -186,7 +185,5 @@ const YearlyView = ({ yearlyData, searchQuery, loading, error, months }) => {
     </motion.div>
   );
 };
- 
+
 export default YearlyView;
- 
- 

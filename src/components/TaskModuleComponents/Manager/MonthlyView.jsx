@@ -1,5 +1,4 @@
-
- import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import LoadingSpinner from '../../common-components/LoadingSpinner';
@@ -8,7 +7,7 @@ import EmptyState from '../../common-components/EmptyState';
 import { getDaysInMonth } from './utils';
 import { decryptString } from '../../services/decrypt';
 import { fetchEncryptionKeys } from '../../services/apiClient';
- 
+
 const MonthlyView = ({
   monthlyData,
   searchQuery,
@@ -22,7 +21,7 @@ const MonthlyView = ({
   const [aesKey, setAesKey] = useState(null);
   const [aesIV, setAesIV] = useState(null);
   const [keyError, setKeyError] = useState(null);
- 
+
   // Fetch encryption keys
   useEffect(() => {
     const fetchKeys = async () => {
@@ -43,7 +42,7 @@ const MonthlyView = ({
     };
     fetchKeys();
   }, []);
- 
+
   // Helper function to decrypt names safely
   const getDecryptedName = (encryptedName, rowIndex) => {
     if (!encryptedName) {
@@ -63,7 +62,7 @@ const MonthlyView = ({
       return encryptedName;
     }
   };
- 
+
   // Cache decrypted names
   const decryptedNames = useMemo(() => {
     if (!monthlyData || !Array.isArray(monthlyData)) {
@@ -75,7 +74,7 @@ const MonthlyView = ({
       decryptedName: getDecryptedName(row.name || '', idx),
     }));
   }, [monthlyData, aesKey, aesIV, keyError]);
- 
+
   // Memoized filtered data
   const filteredMonthlyData = useMemo(() => {
     if (!decryptedNames) return [];
@@ -87,21 +86,21 @@ const MonthlyView = ({
     console.log('MonthlyView - filteredMonthlyData:', filtered);
     return filtered;
   }, [decryptedNames, searchQuery]);
- 
+
   const daysInMonth = getDaysInMonth(selectedYear, selectedMonth);
   const daysPerPage = 16;
   const totalPages = Math.ceil(daysInMonth / daysPerPage);
   const startDay = monthlyViewPage * daysPerPage + 1;
   const endDay = Math.min((monthlyViewPage + 1) * daysPerPage, daysInMonth);
   const daysToShow = Array.from({ length: endDay - startDay + 1 }, (_, i) => startDay + i);
- 
+
   // Helper function to check if a day is weekend
   const isWeekend = (year, month, day) => {
     const date = new Date(year, month, day);
     const dayOfWeek = date.getDay();
     return dayOfWeek === 0 || dayOfWeek === 6; // Sunday = 0, Saturday = 6
   };
- 
+
   // Helper function to format day values
   const formatDayValue = (hours, year, month, day) => {
     if (hours === 0 && isWeekend(year, month, day)) {
@@ -109,7 +108,7 @@ const MonthlyView = ({
     }
     return hours;
   };
- 
+
   return (
     <motion.div
       className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden"
@@ -164,7 +163,7 @@ const MonthlyView = ({
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-gradient-to-r from-violet-50 to-violet-100 border-b border-violet-200">
-                <th className="sticky left-0 bg-gradient-to-r from-violet-50 to-violet-100 py-4 px-6 text-left font-semibold text-violet-800 z-10 min-w-[150px]">
+                <th className="sticky left-0 bg-gradient-to-r from-violet-50 to-violet-100 py-4 px-6 text-left font-semibold text-violet-800 z-20 min-w-[150px] shadow-[4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                   Name
                 </th>
                 {daysToShow.map(day => {
@@ -196,7 +195,7 @@ const MonthlyView = ({
                     animate={{ opacity: 1, x: 0 }}
                     transition={{ duration: 0.3, delay: idx * 0.05 }}
                   >
-                    <td className="sticky left-0 bg-inherit py-4 px-6 font-medium text-gray-900 z-0">
+                    <td className="sticky left-0 bg-inherit py-4 px-6 font-medium text-gray-900 z-20 shadow-[4px_0_6px_-1px_rgba(0,0,0,0.1)]">
                       {row.decryptedName}
                     </td>
                     {daysToShow.map(day => {
@@ -204,7 +203,7 @@ const MonthlyView = ({
                       const dayIsWeekend = isWeekend(selectedYear, selectedMonth, day);
                       const displayValue = formatDayValue(hours, selectedYear, selectedMonth, day);
                       const isZeroWeekend = dayIsWeekend && hours === 0;
- 
+
                       return (
                         <td key={day} className="text-center py-3 px-2">
                           <motion.span
@@ -236,7 +235,5 @@ const MonthlyView = ({
     </motion.div>
   );
 };
- 
+
 export default MonthlyView;
- 
- 
