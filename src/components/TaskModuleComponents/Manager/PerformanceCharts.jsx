@@ -2466,7 +2466,7 @@ const PerformanceCharts = ({
       </motion.div>
 
       {/* Chart Insights */}
-      <motion.div
+      {/* <motion.div
         className="bg-gradient-to-r from-violet-50 to-purple-50 rounded-xl p-6 border border-violet-200"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -2505,7 +2505,7 @@ const PerformanceCharts = ({
             </p>
           </div>
         </div>
-      </motion.div>
+      </motion.div> */}
     </motion.div>
   );
 };
