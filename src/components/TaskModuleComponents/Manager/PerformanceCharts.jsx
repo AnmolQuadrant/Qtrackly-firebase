@@ -1961,12 +1961,12 @@ const PerformanceCharts = ({
   // Color schemes for charts
   const colors = {
     primary: '#7c3aed',
-    secondary: '#a855f7',
+    secondary: '#f50ae5ff',
     success: '#10b981',
     warning: '#f59e0b',
     danger: '#ef4444',
     info: '#3b82f6',
-    gradient: ['#7c3aed', '#a855f7', '#c084fc', '#ddd6fe', '#ede9fe']
+    gradient: ['#a855f7', '#f59e0b', '#10b981', '#ddd6fe', '#ede9fe']
   };
 
   // Compute taskTypeDistribution based on filtered tasks and users
@@ -2153,42 +2153,105 @@ const PerformanceCharts = ({
             </BarChart>
           </ResponsiveContainer>
         );
-
-      case 'tasks':
+        case 'tasks':
         return (
-          <div className="flex flex-col items-center">
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={chartData.taskDistribution}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={120}
-                  innerRadius={60}
-                  paddingAngle={5}
-                >
-                  {chartData.taskDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex gap-4 mt-4 flex-wrap justify-center">
-              {chartData.taskDistribution.map((entry, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full" 
-                    style={{ backgroundColor: entry.color }}
-                  />
-                  <span className="text-sm text-gray-600">{entry.name}: {entry.value}</span>
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+            {/* Pie Chart */}
+            <div className="flex-shrink-0">
+              <ResponsiveContainer width={400} height={350}>
+                <PieChart>
+                  <Pie
+                    data={chartData.taskDistribution}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={140}
+                    innerRadius={70}
+                    paddingAngle={5}
+                    startAngle={90}
+                    endAngle={450}
+                  >
+                    {chartData.taskDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Legend and Stats */}
+            <div className="flex flex-col justify-center space-y-4">
+              <div className="space-y-3">
+                {chartData.taskDistribution.map((entry, index) => (
+                  <div key={index} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg min-w-[250px]">
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="w-4 h-4 rounded-full flex-shrink-0" 
+                        style={{ backgroundColor: entry.color }}
+                      />
+                      <span className="text-sm font-medium text-gray-700">{entry.name}</span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-lg font-bold text-gray-900">{entry.value}</span>
+                      <div className="text-xs text-gray-500">
+                        {((entry.value / chartData.taskDistribution.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(1)}%
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Total Summary */}
+              <div className="p-4 bg-gradient-to-r from-violet-50 to-purple-50 rounded-lg border border-violet-200">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-violet-800">
+                    {chartData.taskDistribution.reduce((sum, item) => sum + item.value, 0)}
+                  </div>
+                  <div className="text-sm text-violet-600">Total Tasks</div>
                 </div>
-              ))}
+              </div>
             </div>
           </div>
         );
+
+
+      // case 'tasks':
+      //   return (
+      //     <div className="flex flex-col items-center">
+      //       <ResponsiveContainer width="100%" height={350}>
+      //         <PieChart>
+      //           <Pie
+      //             data={chartData.taskDistribution}
+      //             dataKey="value"
+      //             nameKey="name"
+      //             cx="50%"
+      //             cy="50%"
+      //             outerRadius={120}
+      //             innerRadius={60}
+      //             paddingAngle={5}
+      //           >
+      //             {chartData.taskDistribution.map((entry, index) => (
+      //               <Cell key={`cell-${index}`} fill={entry.color} />
+      //             ))}
+      //           </Pie>
+      //           <Tooltip />
+      //         </PieChart>
+      //       </ResponsiveContainer>
+      //       <div className="flex gap-4 mt-4 flex-wrap justify-center">
+      //         {chartData.taskDistribution.map((entry, index) => (
+      //           <div key={index} className="flex items-center gap-2">
+      //             <div 
+      //               className="w-4 h-4 rounded-full" 
+      //               style={{ backgroundColor: entry.color }}
+      //             />
+      //             <span className="text-sm text-gray-600">{entry.name}: {entry.value}</span>
+      //           </div>
+      //         ))}
+      //       </div>
+      //     </div>
+      //   );
 
       case 'hours':
         return (
@@ -2211,38 +2274,104 @@ const PerformanceCharts = ({
           </ResponsiveContainer>
         );
 
+      // case 'taskTypes':
+      //   return (
+      //     <div className="flex flex-col items-center">
+      //       <ResponsiveContainer width="100%" height={350}>
+      //         <PieChart>
+      //           <Pie
+      //             data={chartData.taskTypeDistribution}
+      //             dataKey="value"
+      //             nameKey="name"
+      //             cx="50%"
+      //             cy="50%"
+      //             outerRadius={120}
+      //             innerRadius={60}
+      //             paddingAngle={5}
+      //           >
+      //             {chartData.taskTypeDistribution.map((entry, index) => (
+      //               <Cell key={`cell-${index}`} fill={entry.color} />
+      //             ))}
+      //           </Pie>
+      //           <Tooltip />
+      //         </PieChart>
+      //       </ResponsiveContainer>
+      //       <div className="flex gap-4 mt-4 flex-wrap justify-center">
+      //         {chartData.taskTypeDistribution.map((entry, index) => (
+      //           <div key={index} className="flex items-center gap-2">
+      //             <div 
+      //               className="w-4 h-4 rounded-full" 
+      //               style={{ backgroundColor: entry.color }}
+      //             />
+      //             <span className="text-sm text-gray-600">{entry.name}: {entry.value}</span>
+      //           </div>
+      //         ))}
+      //       </div>
+      //     </div>
+      //   );
       case 'taskTypes':
         return (
-          <div className="flex flex-col items-center">
-            <ResponsiveContainer width="100%" height={350}>
-              <PieChart>
-                <Pie
-                  data={chartData.taskTypeDistribution}
-                  dataKey="value"
-                  nameKey="name"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={120}
-                  innerRadius={60}
-                  paddingAngle={5}
-                >
+          <div className="flex flex-col lg:flex-row items-center justify-center gap-8">
+            {/* Pie Chart */}
+            <div className="flex-shrink-0">
+              <ResponsiveContainer width={400} height={350}>
+                <PieChart>
+                  <Pie
+                    data={chartData.taskTypeDistribution}
+                    dataKey="value"
+                    nameKey="name"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={140}
+                    innerRadius={70}
+                    paddingAngle={3}
+                    startAngle={90}
+                    endAngle={450}
+                  >
+                    {chartData.taskTypeDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            
+            {/* Legend and Stats */}
+            <div className="flex flex-col justify-center space-y-4 max-w-sm">
+              <div className="space-y-3">
+                <div className="max-h-64 overflow-y-auto space-y-2">
                   {chartData.taskTypeDistribution.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
+                    <div key={index} className="flex items-center justify-between gap-4 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <div 
+                          className="w-4 h-4 rounded-full flex-shrink-0" 
+                          style={{ backgroundColor: entry.color }}
+                        />
+                        <span className="text-sm font-medium text-gray-700 truncate" title={entry.name}>
+                          {entry.name.length > 20 ? entry.name.substring(0, 20) + '...' : entry.name}
+                        </span>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <span className="text-lg font-bold text-gray-900">{entry.value}</span>
+                        <div className="text-xs text-gray-500">
+                          {((entry.value / chartData.taskTypeDistribution.reduce((sum, item) => sum + item.value, 0)) * 100).toFixed(1)}%
+                        </div>
+                      </div>
+                    </div>
                   ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
-            <div className="flex gap-4 mt-4 flex-wrap justify-center">
-              {chartData.taskTypeDistribution.map((entry, index) => (
-                <div key={index} className="flex items-center gap-2">
-                  <div 
-                    className="w-4 h-4 rounded-full" 
-                    style={{ backgroundColor: entry.color }}
-                  />
-                  <span className="text-sm text-gray-600">{entry.name}: {entry.value}</span>
                 </div>
-              ))}
+              </div>
+              
+              {/* Total Summary */}
+              <div className="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-200">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-800">
+                    {chartData.taskTypeDistribution.reduce((sum, item) => sum + item.value, 0)}
+                  </div>
+                  <div className="text-sm text-blue-600">Total Items</div>
+                </div>
+              </div>
             </div>
           </div>
         );
