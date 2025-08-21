@@ -16,7 +16,7 @@ import CryptoJS from 'crypto-js';
 import { parseISO, addHours, subDays } from 'date-fns';
 import { decryptString } from '../../services/decrypt';
 import { fetchEncryptionKeys } from '../../services/apiClient';
-// import GanttChart from './GanttChart';
+
 function UserView() {
   const navigate = useNavigate();
   const [taskList, setTaskList] = useState([]);
@@ -113,10 +113,12 @@ function UserView() {
         
         if (!user?.id) {
           console.error('User ID missing');
+          
           return;
         }
       } catch (error) {
         console.error('Error in fetchData:', error);
+        
       }
     };
     fetchData();
@@ -288,7 +290,7 @@ function UserView() {
 
   const playNotificationSound = () => {
     if (!notificationSettings.soundEnabled) return;
-    const audio = new Audio('/assets/notification-sound.wav');
+    const audio = new Audio('dist/assets/notification-sound.wav');
     audio.play().catch(err => console.warn('Audio play failed:', err));
   };
 
@@ -1237,7 +1239,7 @@ function UserView() {
                     <p className="text-sm font-medium">Loading notifications...</p>
                   </div>
                 ) : notificationError ? (
-                  <div className="flex flex-col interesting-items-center justify-center h-full text-center p-4">
+                  <div className="flex flex-col items-center justify-center h-full text-center p-4">
                     <X className="h-8 w-8 text-red-500 mb-2" />
                     <p className="text-sm text-red-600 mb-4">{notificationError}</p>
                     <button
@@ -1341,105 +1343,91 @@ function UserView() {
         </div>
       )}
       {viewMode !== 'focus' && viewMode !== 'dependencies' && (
-        <div className="flex flex-wrap md:flex-nowrap justify-between items-center mb-4">
-          {viewMode === 'gantt' ? (
-            <div >
-              {/* <button
-                className="px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 bg-white shadow-sm"
-                onClick={() => toggleViewMode('list')}
+        <div className="flex flex-wrap md:flex-nowrap justify-between items-center gap-4 mb-4">
+          <div className="flex gap-3 flex-shrink-0 order-last md:order-first">
+            <button
+              className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
+              onClick={() => toggleViewMode('list')}
+            >
+              <List className="w-4 h-4" />
+              List
+            </button>
+            <button
+              className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 ${viewMode === 'gantt' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
+              onClick={() => toggleViewMode('gantt')}
+            >
+              <CalendarRange className="w-4 h-4" />
+              Timeline
+            </button>
+          </div>
+          <div className="flex-grow min-w-[200px] md:max-w-md">
+            <SearchBar placeholder="Search tasks by name or description..." onSearch={handleOnSearch} className="w-full" />
+          </div>
+          <div className="flex gap-3 flex-shrink-0 items-center justify-end flex-wrap">
+            <div className="relative">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setShowNotifications((prev) => !prev);
+                  setShowHistory(false);
+                }}
+                className={`relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-colors ${newNotificationPulse ? 'animate-pulse' : ''}`}
+                aria-label="Toggle notifications"
               >
-                <List className="w-4 h-4" />
-                Task
-              </button> */}
+                <Bell className="h-6 w-6" />
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
             </div>
-          ) : (
-            <>
-              <div className="flex gap-3 flex-shrink-0 order-last md:order-first">
-                <button
-                  className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 ${viewMode === 'list' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
-                  onClick={() => toggleViewMode('list')}
-                >
-                  <List className="w-4 h-4" />
-                  List
-                </button>
-                <button
-                  className={`px-3 py-1.5 text-sm rounded-md flex items-center gap-1.5 ${viewMode === 'gantt' ? 'bg-white shadow-sm' : 'text-gray-600'}`}
-                  onClick={() => toggleViewMode('gantt')}
-                >
-                  <CalendarRange className="w-4 h-4" />
-                  Timeline
-                </button>
-              </div>
-              <div className="flex-grow min-w-[200px] md:max-w-md">
-                <SearchBar placeholder="Search tasks by name or description..." onSearch={handleOnSearch} className="w-full" />
-              </div>
-              <div className="flex gap-3 flex-shrink-0 items-center justify-end flex-wrap">
-                <div className="relative">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setShowNotifications((prev) => !prev);
-                      setShowHistory(false);
-                    }}
-                    className={`relative p-2 text-gray-600 hover:text-purple-600 hover:bg-purple-100 rounded-full transition-colors ${newNotificationPulse ? 'animate-pulse' : ''}`}
-                    aria-label="Toggle notifications"
-                  >
-                    <Bell className="h-6 w-6" />
-                    {unreadCount > 0 && (
-                      <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                        {unreadCount > 9 ? '9+' : unreadCount}
-                      </span>
-                    )}
-                  </button>
-                </div>
-                <Button onClick={() => toggleViewMode('focus')} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <Kanban className="w-4 h-4" />
-                  Focus Board
-                </Button>
-                <Button onClick={toggleDependencyRequests} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <GitBranch className="w-4 h-4" />
-                  Dependency Requests
-                </Button>
-                <div className="relative">
-                  <Button
-                    ref={filterButtonRef}
-                    onClick={() => {
-                      if (filterCount > 0) {
-                        handleClearFilters();
-                      } else {
-                        toggleFilter();
-                      }
-                    }}
-                    className="flex items-center gap-1.5 min-w-[110px] justify-center whitespace-nowrap"
-                    style={{ transition: 'width 0.2s ease' }}
-                  >
-                    {filterCount > 0 ? (
-                      <>
-                        <FilterIcon className="w-4 h-4" />
-                        Clear Filter
-                        <span className="bg-white text-purple-600 text-xs px-1.5 py-0.5 rounded-full border border-current">{filterCount}</span>
-                      </>
-                    ) : (
-                      <>
-                        <FilterIcon className="w-4 h-4" />
-                        Filter
-                      </>
-                    )}
-                  </Button>
-                  {showFilter && <FilterModal onFilterChange={handleFilterChange} onClose={() => setShowFilter(false)} />}
-                </div>
-                <Button onClick={handleAddTask} className="flex items-center gap-1.5 whitespace-nowrap">
-                  <BadgePlus className="w-4 h-4" />
-                  Add Task
-                </Button>
-              </div>
-            </>
-          )}
+            <Button onClick={() => toggleViewMode('focus')} className="flex items-center gap-1.5 whitespace-nowrap">
+              <Kanban className="w-4 h-4" />
+              Focus Board
+            </Button>
+            <Button onClick={toggleDependencyRequests} className="flex items-center gap-1.5 whitespace-nowrap">
+              <GitBranch className="w-4 h-4" />
+              Dependency Requests
+            </Button>
+            <div className="relative">
+              <Button
+                ref={filterButtonRef}
+                onClick={() => {
+                  if (filterCount > 0) {
+                    handleClearFilters();
+                  } else {
+                    toggleFilter();
+                  }
+                }}
+                className="flex items-center gap-1.5 min-w-[110px] justify-center whitespace-nowrap"
+                style={{ transition: 'width 0.2s ease' }}
+              >
+                {filterCount > 0 ? (
+                  <>
+                    <FilterIcon className="w-4 h-4" />
+                    Clear Filter
+                    <span className="bg-white text-purple-600 text-xs px-1.5 py-0.5 rounded-full border border-current">{filterCount}</span>
+                  </>
+                ) : (
+                  <>
+                    <FilterIcon className="w-4 h-4" />
+                    Filter
+                  </>
+                )}
+              </Button>
+              {showFilter && <FilterModal onFilterChange={handleFilterChange} onClose={() => setShowFilter(false)} />}
+            </div>
+            <Button onClick={handleAddTask} className="flex items-center gap-1.5 whitespace-nowrap">
+              <BadgePlus className="w-4 h-4" />
+              Add Task
+            </Button>
+          </div>
         </div>
       )}
       {viewMode === 'dependencies' && <DependencyRequests />}
       {viewMode === 'focus' && <FocusBoard tasks={filteredTasks} onBack={() => toggleViewMode('list')} />}
-      {viewMode === 'gantt' && <GanttChart tasks={ganttReadyTasks} onBack={() => toggleViewMode('list')}/>}
+      {viewMode === 'gantt' && <GanttChart tasks={ganttReadyTasks} />}
       <AddTaskModal
         isOpen={isAddModalOpen}
         onClose={handleCloseModal}
