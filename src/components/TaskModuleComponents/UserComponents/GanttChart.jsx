@@ -596,4 +596,5 @@ const GanttChart = ({ tasks: propTasks,onBack }) => {
   );
 };
  
-export default GanttChart;
+   export default GanttChart;
+
