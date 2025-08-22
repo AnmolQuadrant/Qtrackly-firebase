@@ -1,47 +1,47 @@
 import { useState, useRef, useEffect } from "react";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, useLocation } from "react-router-dom";
-import { 
-  User, 
-  LogOut, 
-  ChevronDown, 
-  Bell, 
+import {
+  User,
+  LogOut,
+  ChevronDown,
+  Bell,
   Search,
   Menu,
   X
 } from "lucide-react";
 import Logo from "../../../assets/Logo.png";
-
+ 
 const Header = () => {
   const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [notifications] = useState([]); 
+  const [notifications] = useState([]);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
-  
-  const { 
-    user, 
-    logout, 
-    getPrimaryRole, 
+ 
+  const {
+    user,
+    logout,
+    getPrimaryRole,
     hasRole,
-    isLoading 
+    isLoading
   } = useAuth();
-
+ 
   useEffect(() => {
     const handleClickOutside = (event) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
         setIsProfileDropdownOpen(false);
       }
     };
-
+ 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
+ 
   const getNavigationItems = () => {
     const items = [];
-    
+   
     if (hasRole("admin")) {
       items.push(
         // { label: "Admin Dashboard", path: "/admin", roles: ["admin"] },
@@ -49,18 +49,18 @@ const Header = () => {
      
       );
     }
-    
+   
     if (hasRole("manager")) {
       items.push(
         { label: "Manager Dashboard", path: "/manager", roles: ["manager", "admin"] }
       );
     }
-
-    return items.filter(item => 
+ 
+    return items.filter(item =>
       item.roles.some(role => hasRole(role))
     );
   };
-
+ 
   const handleLogout = async () => {
     try {
       await logout();
@@ -69,34 +69,35 @@ const Header = () => {
       window.location.href = "/login";
     }
   };
-
+ 
   const handleNavigation = (path) => {
     navigate(path);
     setIsMobileMenuOpen(false);
     setIsProfileDropdownOpen(false);
   };
-
+ 
   const getPageTitle = () => {
     const path = location.pathname;
     const navigationItems = getNavigationItems();
     const currentItem = navigationItems.find(item => item.path === path);
-    
+   
     if (currentItem) return currentItem.label;
-    
+   
     if (path.includes("/admin")) return "Admin Panel";
     if (path.includes("/manager")) return "Manager Dashboard";
     return "Dashboard";
   };
-
+ 
   const getUserInitials = () => {
     if (!user?.name) return "U";
-    const names = user.name.split(" ");
+    const cleanName = user.name.replace(/\s*\(.*?\)\s*/, ""); // Remove text in parentheses
+    const names = cleanName.trim().split(" ");
     if (names.length >= 2) {
       return `${names[0][0]}${names[names.length - 1][0]}`.toUpperCase();
     }
-    return user.name.charAt(0).toUpperCase();
-  };
-
+    return cleanName.charAt(0).toUpperCase();
+};
+ 
   const getRoleColor = () => {
     const primaryRole = getPrimaryRole();
     switch (primaryRole) {
@@ -105,7 +106,7 @@ const Header = () => {
       default: return "bg-green-100 text-green-800";
     }
   };
-
+ 
   if (isLoading) {
     return (
       <header className="bg-white shadow-sm border-b border-gray-200">
@@ -121,16 +122,16 @@ const Header = () => {
       </header>
     );
   }
-
+ 
   return (
     <header className="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center space-x-4">
             <div className="flex items-center space-x-3">
-              <img 
-                src={Logo} 
-                alt="Quadrant Technologies" 
+              <img
+                src={Logo}
+                alt="Quadrant Technologies"
                 className="w-8 h-8 rounded-full object-cover"
               />
               <div className="hidden sm:block">
@@ -143,7 +144,7 @@ const Header = () => {
               </div>
             </div>
           </div>
-
+ 
           {/* Right side - Notifications and Profile */}
           <div className="flex items-center space-x-4">
             {/* Notifications */}
@@ -153,7 +154,7 @@ const Header = () => {
                 <span className="absolute -top-1 -right-1 w-3 h-3 bg-red-500 rounded-full"></span>
               )}
             </button> */}
-
+ 
             {/* Mobile menu button */}
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
@@ -161,7 +162,7 @@ const Header = () => {
             >
               {isMobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
-
+ 
             {/* Profile Dropdown */}
             <div className="relative" ref={dropdownRef}>
               <button
@@ -185,7 +186,7 @@ const Header = () => {
                 </div>
                 <ChevronDown className="w-4 h-4 text-gray-400" />
               </button>
-
+ 
               {/* Dropdown Menu */}
               {isProfileDropdownOpen && (
                 <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 py-2 z-50">
@@ -208,7 +209,7 @@ const Header = () => {
                       </div>
                     </div>
                   </div>
-
+ 
                   {/* Navigation Items */}
                   <div className="py-2">
                     {getNavigationItems().slice(0, 4).map((item) => (
@@ -222,7 +223,7 @@ const Header = () => {
                       </button>
                     ))}
                   </div>
-
+ 
                   {/* Settings and Logout */}
                   <div className="border-t border-gray-100 py-2">
                     <button
@@ -238,7 +239,7 @@ const Header = () => {
             </div>
           </div>
         </div>
-
+ 
         {/* Mobile Navigation Menu */}
         {isMobileMenuOpen && (
           <div className="md:hidden border-t border-gray-200 py-4">
@@ -271,5 +272,5 @@ const Header = () => {
     </header>
   );
 };
-
+ 
 export default Header;
