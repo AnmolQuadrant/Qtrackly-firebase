@@ -290,7 +290,7 @@ function UserView() {
 
   const playNotificationSound = () => {
     if (!notificationSettings.soundEnabled) return;
-    const audio = new Audio('/assets/notification-sound.wav');
+    const audio = new Audio('/notification-sound.wav');
     audio.play().catch(err => console.warn('Audio play failed:', err));
   };
 
