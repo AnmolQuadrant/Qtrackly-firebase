@@ -1,4 +1,5 @@
 
+
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import axios from 'axios';
@@ -419,22 +420,44 @@ const PerformanceView = ({
     }
   };
 
+  // if (showCharts) {
+  //   return (
+  //     <PerformanceCharts
+  //       performanceData={performanceData}
+  //       filteredTasksByPeriod={filteredTasksByPeriod}
+  //       selectedUser={selectedUser}
+  //       viewType={viewType}
+  //       selectedYear={selectedYear}
+  //       selectedMonth={selectedMonth}
+  //       months={months}
+  //       selectedDepartment={selectedDepartment}
+  //       selectedSubDepartment={selectedSubDepartment}
+  //       selectedManager={selectedManager}
+  //       searchQuery={searchQuery}
+  //     />
+  //   );
+  // }
   if (showCharts) {
-    return (
-      <PerformanceCharts
-        performanceData={performanceData}
-        filteredTasksByPeriod={filteredTasksByPeriod}
-        selectedUser={selectedUser}
-        viewType={viewType}
-        selectedYear={selectedYear}
-        selectedMonth={selectedMonth}
-        months={months}
-        selectedDepartment={selectedDepartment}
-        selectedSubDepartment={selectedSubDepartment}
-        selectedManager={selectedManager}
-      />
-    );
-  }
+  return (
+    <PerformanceCharts
+      performanceData={performanceData}
+      filteredTasksByPeriod={filteredTasksByPeriod}
+      selectedUser={selectedUser}
+      viewType={viewType}
+      selectedYear={selectedYear}
+      selectedMonth={selectedMonth}
+      months={months}
+      selectedDepartment={selectedDepartment}
+      selectedSubDepartment={selectedSubDepartment}
+      selectedManager={selectedManager}
+      searchQuery={searchQuery} // This was missing
+      performanceFilter={performanceFilter} // Consider adding this too
+      userMap={userMap} // And this if needed for user info
+      aesKey={aesKey} // And encryption keys if needed
+      aesIV={aesIV}
+    />
+  );
+}
 
   return (
     <motion.div
@@ -445,29 +468,29 @@ const PerformanceView = ({
     >
       {/* Header */}
       <motion.div
-        className="mb-6 flex items-center justify-between"
+        className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4"
         initial={{ y: -20, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
         transition={{ duration: 0.4 }}
       >
-        <div>
-          <h2 className="text-2xl font-bold text-violet-900">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-xl sm:text-2xl font-bold text-violet-900 truncate">
             {selectedUser ? `Performance Metrics for ${selectedUser.name}` : 'Performance Metrics (All Users)'}
           </h2>
           <p className="text-sm text-gray-600 mt-1">Period: {getPeriodDescription()}</p>
         </div>
 
-        <div className="flex items-center space-x-4 relative">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center space-y-2 sm:space-y-0 sm:space-x-4 relative">
           <button
             type="button"
             onClick={toggleFilterMenu}
-            className="flex items-center px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-500"
+            className="flex items-center justify-center px-3 py-2 border border-gray-300 rounded-md bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
             aria-haspopup="true"
             aria-expanded={filterMenuOpen}
           >
-            <span>{filterDisplayNames[performanceFilter]}</span>
+            <span className="truncate">{filterDisplayNames[performanceFilter]}</span>
             <svg
-              className="ml-2 h-4 w-4 text-gray-500"
+              className="ml-2 h-4 w-4 text-gray-500 flex-shrink-0"
               viewBox="0 0 20 20"
               fill="none"
               stroke="currentColor"
@@ -483,7 +506,7 @@ const PerformanceView = ({
             type="button"
             onClick={() => setShowBroadcastModal(true)}
             disabled={!managerId || (performanceFilter === 'all' && performanceData.length === 0)}
-            className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-violet-600 text-white rounded-md hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm whitespace-nowrap"
           >
             Send Notification
           </button>
@@ -491,7 +514,7 @@ const PerformanceView = ({
           <AnimatePresence>
             {filterMenuOpen && (
               <motion.div
-                className="absolute right-0 mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50 text-sm"
+                className="absolute right-0 top-full mt-2 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50 text-sm"
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
@@ -509,8 +532,8 @@ const PerformanceView = ({
                   role="menuitem"
                   type="button"
                 >
-                  <BarChart2 className="w-5 h-5" />
-                  All Users
+                  <BarChart2 className="w-5 h-5 flex-shrink-0" />
+                  <span className="truncate">All Users</span>
                 </button>
                 <div className="border-t border-gray-200 mt-1 pt-1">
                   <div className="px-4 py-1 font-semibold text-gray-700">Flagged Users</div>
@@ -524,9 +547,9 @@ const PerformanceView = ({
                       type="radio"
                       readOnly
                       checked={performanceFilter === 'flagged-any'}
-                      className="mr-2"
+                      className="mr-2 flex-shrink-0"
                     />
-                    Any
+                    <span className="truncate">Both</span>
                   </button>
                   <button
                     className={`flex items-center w-full px-4 py-2 hover:bg-gray-100 ${performanceFilter === 'flagged-overdue' ? 'bg-gray-100 font-semibold' : ''}`}
@@ -538,9 +561,9 @@ const PerformanceView = ({
                       type="radio"
                       readOnly
                       checked={performanceFilter === 'flagged-overdue'}
-                      className="mr-2"
+                      className="mr-2 flex-shrink-0"
                     />
-                    Tasks Overdue
+                    <span className="truncate">Tasks Overdue</span>
                   </button>
                   <button
                     className={`flex items-center w-full px-4 py-2 hover:bg-gray-100 ${performanceFilter === 'flagged-underlogged' ? 'bg-gray-100 font-semibold' : ''}`}
@@ -552,9 +575,9 @@ const PerformanceView = ({
                       type="radio"
                       readOnly
                       checked={performanceFilter === 'flagged-underlogged'}
-                      className="mr-2"
+                      className="mr-2 flex-shrink-0"
                     />
-                    Under Logged
+                    <span className="truncate">Under Logged</span>
                   </button>
                 </div>
                 <div className="border-t border-gray-200 mt-1 pt-1">
@@ -568,9 +591,9 @@ const PerformanceView = ({
                       type="radio"
                       readOnly
                       checked={performanceFilter === 'non-flagged'}
-                      className="mr-2"
+                      className="mr-2 flex-shrink-0"
                     />
-                    Non Flagged Users
+                    <span className="truncate">Non Flagged Users</span>
                   </button>
                 </div>
               </motion.div>
@@ -593,9 +616,9 @@ const PerformanceView = ({
         </motion.div>
       ) : (
         <>
-          {/* KPIs */}
+          {/* KPIs - Responsive grid */}
           <motion.div
-            className="flex justify-center flex-wrap gap-4"
+            className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 sm:gap-4"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ staggerChildren: 0.1 }}
@@ -606,14 +629,14 @@ const PerformanceView = ({
                 value: kpis.totalEstimatedHours.toFixed(1),
                 bg: 'bg-blue-50',
                 color: 'text-blue-700',
-                icon: (<div className='flex items-center justify-center'><Clock className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><Clock className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
               {
                 label: 'Total Completed Hours',
                 value: kpis.totalActualHours.toFixed(1),
                 bg: 'bg-emerald-50',
                 color: 'text-green-700',
-                icon: (<div className='flex items-center justify-center'><CheckCircle className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><CheckCircle className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
               {
                 label: 'Total Variance Hours',
@@ -621,7 +644,7 @@ const PerformanceView = ({
                 bg: 'bg-indigo-50',
                 color: kpis.hoursVariance < 0 ? 'text-green-600' : 'text-red-600',
                 subtext: `${kpis.hoursVariancePercentage}% variance`,
-                icon: (<div className='flex items-center justify-center'><AlertTriangle className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><AlertTriangle className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
               {
                 label: 'Task Completed %',
@@ -629,14 +652,14 @@ const PerformanceView = ({
                 bg: 'bg-purple-50',
                 color: 'text-purple-700',
                 subtext: `${kpis.completedTasks} of ${kpis.totalTasks} tasks`,
-                icon: (<div className='flex items-center justify-center'><Percent className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><Percent className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
               {
                 label: 'Avg Task Time',
                 value: `${kpis.avgTaskTimeDays.toFixed(1)} Hrs`,
                 bg: 'bg-zinc-50',
                 color: 'text-gray-900',
-                icon: (<div className='flex items-center justify-center'><Clock4 className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><Clock4 className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
               {
                 label: 'On-Time Delivery',
@@ -644,27 +667,27 @@ const PerformanceView = ({
                 bg: 'bg-emerald-50',
                 color: 'text-green-700',
                 subtext: `${kpis.onTimeTasks} of ${kpis.totalTasks} tasks`,
-                icon: (<div className='flex items-center justify-center'><Truck className="h-8 w-8" /></div>),
+                icon: (<div className='flex items-center justify-center'><Truck className="h-5 w-5 sm:h-6 sm:w-6" /></div>),
               },
             ].map((kpi, idx) => (
               <motion.div
                 key={kpi.label}
-                className={`p-4 rounded-lg shadow-sm border border-gray-200 text-center flex-1 min-w-[180px] ${kpi.bg} hover:shadow-md transition-shadow`}
+                className={`p-2 sm:p-3 rounded-lg shadow-sm border border-gray-200 text-center ${kpi.bg} hover:shadow-md transition-shadow`}
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: idx * 0.1 }}
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <div className={`mb-2 ${kpi.color}`}>{kpi.icon}</div>
-                <p className="text-sm font-medium text-gray-600">{kpi.label}</p>
-                <p className={`text-2xl font-bold ${kpi.color || 'text-gray-900'}`}>{kpi.value}</p>
-                {kpi.subtext && <p className="text-sm text-gray-500">{kpi.subtext}</p>}
+                <div className={`mb-1 ${kpi.color}`}>{kpi.icon}</div>
+                <p className="text-xs font-medium text-gray-600 leading-tight">{kpi.label}</p>
+                <p className={`text-sm sm:text-lg font-bold ${kpi.color || 'text-gray-900'}`}>{kpi.value}</p>
+                {kpi.subtext && <p className="text-xs text-gray-500 leading-tight">{kpi.subtext}</p>}
               </motion.div>
             ))}
           </motion.div>
 
-          {/* Performance Table */}
+          {/* Performance Table - Fixed horizontal scrollbar issues */}
           <motion.div
             className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mt-6"
             initial={{ opacity: 0, scale: 0.98 }}
@@ -685,131 +708,159 @@ const PerformanceView = ({
                 <p>No performance data available for the selected period & filter</p>
               </motion.div>
             ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-50 border-b border-gray-200">
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Name</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Completed Task</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Avg Task Time</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Estimated Hours</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Actual Hours</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Variance</th>
-                      <th className="py-3 px-6 text-center font-semibold text-gray-700">Overdue Tasks</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {performanceData.map((row, idx) => {
-                      const hasRedFlag = row.overdue > 0 || row.variance > 0;
-                      return (
-                        <motion.tr
-                          key={row.userId}
-                          onClick={() => handleUserClick(row)}
-                          className={`cursor-pointer ${
-                            selectedUser?.userId === row.userId
-                              ? 'bg-violet-50 border-l-4 border-violet-500'
-                              : idx % 2 === 0
-                              ? 'bg-white'
-                              : 'bg-gray-25'
-                          } hover:bg-violet-100 transition-colors relative`}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ duration: 0.3, delay: idx * 0.05 }}
-                        >
-                          <td className="py-3 px-6 font-medium text-gray-900">{row.name}</td>
-                          <td className="py-3 px-6 text-center text-gray-700">{row.onTimePercentage}%</td>
-                          <td className="py-3 px-6 text-center text-gray-700">{row.avgTaskTime}</td>
-                          <td className="py-3 px-6 text-center text-gray-700">{row.estimatedHours}</td>
-                          <td className="py-3 px-6 text-center text-gray-700">{row.actualHours}</td>
-                          <td
-                            className={`py-3 px-6 text-center font-medium ${
-                              row.variance < 0 ? 'text-green-600' : 'text-red-600'
-                            }`}
+              <div className="w-full overflow-hidden">
+                <div className="max-h-[600px] overflow-y-auto overflow-x-hidden">
+                  <table className="w-full table-fixed border-collapse">
+                    <thead className="sticky top-0 bg-gray-50 z-10">
+                      <tr className="border-b border-gray-200">
+                        <th className="w-[20%] py-3 px-2 sm:px-4 text-left font-semibold text-gray-700 text-xs sm:text-sm">
+                          Name
+                        </th>
+                        <th className="w-[12%] py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Completed Task
+                        </th>
+                        <th className="w-[12%] py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Avg Task Time
+                        </th>
+                        <th className="w-[14%] py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Estimated Hours
+                        </th>
+                        <th className="w-[12%] py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Actual Hours
+                        </th>
+                        <th className="w-[10%] py-3 px-1 sm:px-2 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Variance
+                        </th>
+                        <th className="w-[20%] py-3 px-2 sm:px-4 text-center font-semibold text-gray-700 text-xs sm:text-sm">
+                          Overdue Tasks
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {performanceData.map((row, idx) => {
+                        const hasRedFlag = row.overdue > 0 || row.variance > 0;
+                        return (
+                          <motion.tr
+                            key={row.userId}
+                            onClick={() => handleUserClick(row)}
+                            className={`cursor-pointer ${
+                              selectedUser?.userId === row.userId
+                                ? 'bg-violet-50 border-l-4 border-violet-500'
+                                : idx % 2 === 0
+                                ? 'bg-white'
+                                : 'bg-gray-25'
+                            } hover:bg-violet-100 transition-colors relative`}
+                            initial={{ opacity: 0, x: -20 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.3, delay: idx * 0.05 }}
                           >
-                            {row.variance < 0 ? '' : '+'}
-                            {row.variance}
-                          </td>
-                          <td className="py-3 px-6 text-center relative">
-                            <span className="flex items-center justify-center relative group cursor-default">
-                              {!hasRedFlag ? (
-                                <>
-                                  {row.overdue > 0 ? row.overdue : 0}
-                                  <svg
-                                    className="h-5 w-5 text-green-500 ml-1"
-                                    fill="none"
-                                    stroke="currentColor"
-                                    viewBox="0 0 24 24"
-                                    xmlns="http://www.w3.org/2000/svg"
-                                    aria-hidden="true"
-                                  >
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
-                                  </svg>
-                                  <motion.div
-                                    className="absolute bottom-full mb-2 px-3 py-1 rounded bg-green-600 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 max-w-xs"
-                                    transition={{ duration: 0.2 }}
-                                  >
-                                    All tasks on time
-                                  </motion.div>
-                                </>
-                              ) : (
-                                <>
-                                  {row.overdue > 0 ? row.overdue : 0}
-                                  <button
-                                    onClick={(e) => toggleActionMenu(row.userId, e)}
-                                    className="h-5 w-5 text-red-500 ml-1 focus:outline-none"
-                                    aria-label="Open actions"
-                                    disabled={!managerId}
-                                  >
+                            <td className="w-[20%] py-3 px-2 sm:px-4 font-medium text-gray-900 text-xs sm:text-sm">
+                              <div className="truncate" title={row.name}>
+                                {row.name}
+                              </div>
+                            </td>
+                            <td className="w-[12%] py-3 px-1 sm:px-2 text-center text-gray-700 text-xs sm:text-sm">
+                              {row.onTimePercentage}%
+                            </td>
+                            <td className="w-[12%] py-3 px-1 sm:px-2 text-center text-gray-700 text-xs sm:text-sm">
+                              {row.avgTaskTime}
+                            </td>
+                            <td className="w-[14%] py-3 px-1 sm:px-2 text-center text-gray-700 text-xs sm:text-sm">
+                              {row.estimatedHours}
+                            </td>
+                            <td className="w-[12%] py-3 px-1 sm:px-2 text-center text-gray-700 text-xs sm:text-sm">
+                              {row.actualHours}
+                            </td>
+                            <td
+                              className={`w-[10%] py-3 px-1 sm:px-2 text-center font-medium text-xs sm:text-sm ${
+                                row.variance < 0 ? 'text-green-600' : 'text-red-600'
+                              }`}
+                            >
+                              {row.variance < 0 ? '' : '+'}
+                              {row.variance}
+                            </td>
+                            <td className="w-[20%] py-3 px-2 sm:px-4 text-center relative">
+                              <span className="flex items-center justify-center relative group cursor-default">
+                                {!hasRedFlag ? (
+                                  <>
+                                    <span className="text-xs sm:text-sm">{row.overdue > 0 ? row.overdue : 0}</span>
                                     <svg
-                                      className="h-5 w-5"
+                                      className="h-4 w-4 sm:h-5 sm:w-5 text-green-500 ml-1 flex-shrink-0"
                                       fill="none"
                                       stroke="currentColor"
                                       viewBox="0 0 24 24"
                                       xmlns="http://www.w3.org/2000/svg"
+                                      aria-hidden="true"
                                     >
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3v18m0-6h10l2-3-2-3H3z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7" />
                                     </svg>
-                                  </button>
+                                    <motion.div
+                                      className="absolute bottom-full mb-2 px-3 py-1 rounded bg-green-600 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 max-w-xs"
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      All tasks on time
+                                    </motion.div>
+                                  </>
+                                ) : (
+                                  <>
+                                    <span className="text-xs sm:text-sm">{row.overdue > 0 ? row.overdue : 0}</span>
+                                    <button
+                                      onClick={(e) => toggleActionMenu(row.userId, e)}
+                                      className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 ml-1 focus:outline-none flex-shrink-0"
+                                      aria-label="Open actions"
+                                      disabled={!managerId}
+                                    >
+                                      <svg
+                                        className="h-4 w-4 sm:h-5 sm:w-5"
+                                        fill="none"
+                                        stroke="currentColor"
+                                        viewBox="0 0 24 24"
+                                        xmlns="http://www.w3.org/2000/svg"
+                                      >
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 3v18m0-6h10l2-3-2-3H3z" />
+                                      </svg>
+                                    </button>
+                                    <motion.div
+                                      className="absolute bottom-full mb-2 px-3 py-1 rounded bg-red-600 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 max-w-xs text-left"
+                                      transition={{ duration: 0.2 }}
+                                    >
+                                      {row.overdue > 0 && row.variance > 0 && (
+                                        <>User has overdue tasks and exceeded estimated hours by {row.variance} hours.</>
+                                      )}
+                                      {row.overdue > 0 && row.variance <= 0 && <>User has overdue tasks.</>}
+                                      {row.overdue === 0 && row.variance > 0 && <>User exceeded the estimated hours by {row.variance} hours.</>}
+                                    </motion.div>
+                                  </>
+                                )}
+                              </span>
+                              <AnimatePresence>
+                                {actionMenuUserId === row.userId && (
                                   <motion.div
-                                    className="absolute bottom-full mb-2 px-3 py-1 rounded bg-red-600 text-white text-xs whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30 max-w-xs text-left"
+                                    initial={{ opacity: 0, scale: 0.95 }}
+                                    animate={{ opacity: 1, scale: 1 }}
+                                    exit={{ opacity: 0, scale: 0.95 }}
                                     transition={{ duration: 0.2 }}
+                                    className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-300 rounded shadow-lg z-50"
+                                    onClick={(e) => e.stopPropagation()}
                                   >
-                                    {row.overdue > 0 && row.variance > 0 && (
-                                      <>User has overdue tasks and exceeded estimated hours by {row.variance} hours.</>
-                                    )}
-                                    {row.overdue > 0 && row.variance <= 0 && <>User has overdue tasks.</>}
-                                    {row.overdue === 0 && row.variance > 0 && <>User exceeded the estimated hours by {row.variance} hours.</>}
+                                    <motion.button
+                                      onClick={(e) => openSendFeedback(row, e)}
+                                      className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
+                                      type="button"
+                                      whileHover={{ backgroundColor: '#f3f4f6' }}
+                                    >
+                                      Send Custom Feedback
+                                    </motion.button>
                                   </motion.div>
-                                </>
-                              )}
-                            </span>
-                            <AnimatePresence>
-                              {actionMenuUserId === row.userId && (
-                                <motion.div
-                                  initial={{ opacity: 0, scale: 0.95 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0.95 }}
-                                  transition={{ duration: 0.2 }}
-                                  className="absolute top-full right-0 mt-1 w-48 bg-white border border-gray-300 rounded shadow-lg z-50"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <motion.button
-                                    onClick={(e) => openSendFeedback(row, e)}
-                                    className="w-full text-left px-4 py-2 text-sm hover:bg-gray-100"
-                                    type="button"
-                                    whileHover={{ backgroundColor: '#f3f4f6' }}
-                                  >
-                                    Send Custom Feedback
-                                  </motion.button>
-                                </motion.div>
-                              )}
-                            </AnimatePresence>
-                          </td>
-                        </motion.tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                                )}
+                              </AnimatePresence>
+                            </td>
+                          </motion.tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </motion.div>
@@ -818,14 +869,14 @@ const PerformanceView = ({
           <AnimatePresence>
             {showFeedbackModal && feedbackUser && (
               <motion.div
-                className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+                className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
                 <motion.div
-                  className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative"
+                  className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
@@ -837,7 +888,7 @@ const PerformanceView = ({
                     <input
                       type="text"
                       readOnly
-                      className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed"
+                      className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100 cursor-not-allowed text-sm"
                       value={feedbackUser.name}
                     />
                   </div>
@@ -846,16 +897,16 @@ const PerformanceView = ({
                     <textarea
                       ref={feedbackInputRef}
                       rows="5"
-                      className="w-full border border-gray-300 rounded px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full border border-gray-300 rounded px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                       value={feedbackMessage}
                       onChange={(e) => setFeedbackMessage(e.target.value)}
                       placeholder="Enter your feedback..."
                     />
                   </div>
-                  <div className="flex justify-end gap-3">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3">
                     <motion.button
                       type="button"
-                      className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                      className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm"
                       onClick={() => setShowFeedbackModal(false)}
                       whileHover={{ scale: 1.05 }}
                       whileTap={{ scale: 0.95 }}
@@ -864,7 +915,7 @@ const PerformanceView = ({
                     </motion.button>
                     <motion.button
                       type="button"
-                      className="px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      className="px-4 py-2 bg-violet-600 text-white rounded hover:bg-violet-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       onClick={sendCustomFeedback}
                       disabled={!managerId}
                       whileHover={{ scale: managerId ? 1.05 : 1 }}
@@ -882,7 +933,7 @@ const PerformanceView = ({
           <AnimatePresence>
             {showBroadcastModal && (
               <motion.div
-                className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50"
+                className="fixed inset-0 bg-black bg-opacity-40 flex items-center justify-center z-50 p-4"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -890,7 +941,7 @@ const PerformanceView = ({
                 onClick={() => setShowBroadcastModal(false)}
               >
                 <motion.div
-                  className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative"
+                  className="bg-white rounded-lg shadow-lg max-w-lg w-full p-6 relative max-h-[90vh] overflow-y-auto"
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
@@ -898,7 +949,7 @@ const PerformanceView = ({
                   onClick={(e) => e.stopPropagation()}
                 >
                   <h2 className="text-xl font-semibold mb-4">Send Notification to Filtered Users</h2>
-                  <p className="mb-4 text-gray-700">
+                  <p className="mb-4 text-gray-700 text-sm">
                     This will send the notification to all users filtered by: <strong>{filterDisplayNames[performanceFilter]}</strong>.
                     Total users: <strong>{getFilteredUserIds().length}</strong>
                   </p>
@@ -906,17 +957,17 @@ const PerformanceView = ({
                     <label className="block text-sm font-semibold mb-1">Message</label>
                     <textarea
                       rows="5"
-                      className="w-full border border-gray-300 rounded px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500"
+                      className="w-full border border-gray-300 rounded px-3 py-2 resize-y focus:outline-none focus:ring-2 focus:ring-violet-500 text-sm"
                       value={broadcastMessage}
                       onChange={(e) => setBroadcastMessage(e.target.value)}
                       placeholder="Enter your notification message..."
                       disabled={broadcastSending}
                     />
                   </div>
-                  <div className="flex justify-end gap-3">
+                  <div className="flex flex-col sm:flex-row justify-end gap-3">
                     <motion.button
                       type="button"
-                      className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100"
+                      className="px-4 py-2 border border-gray-300 rounded hover:bg-gray-100 text-sm"
                       onClick={() => setShowBroadcastModal(false)}
                       disabled={broadcastSending}
                       whileHover={{ scale: 1.05 }}
@@ -926,7 +977,7 @@ const PerformanceView = ({
                     </motion.button>
                     <motion.button
                       type="button"
-                      className={`px-4 py-2 rounded text-white ${broadcastSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
+                      className={`px-4 py-2 rounded text-white text-sm ${broadcastSending ? 'bg-gray-400 cursor-not-allowed' : 'bg-violet-600 hover:bg-violet-700'} disabled:opacity-50 disabled:cursor-not-allowed`}
                       onClick={sendBroadcastNotification}
                       disabled={broadcastSending || !managerId}
                       whileHover={{ scale: (broadcastSending || !managerId) ? 1 : 1.05 }}
@@ -944,8 +995,5 @@ const PerformanceView = ({
     </motion.div>
   );
 };
-
+   
 export default PerformanceView;
-
-
-
