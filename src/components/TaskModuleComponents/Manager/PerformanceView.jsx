@@ -455,6 +455,7 @@ const PerformanceView = ({
       userMap={userMap} // And this if needed for user info
       aesKey={aesKey} // And encryption keys if needed
       aesIV={aesIV}
+      calculatePerformanceMetrics = {calculatePerformanceMetrics}
     />
   );
 }

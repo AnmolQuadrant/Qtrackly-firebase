@@ -79,7 +79,7 @@ function SubtaskRow({ step, taskId, setShowSubtaskModal, setEditingStepId, setSt
         <div className="grid grid-cols-8 py-2 px-4 bg-gray-50 border-b border-gray-200 hover:bg-gray-100 transition-colors">
             <div className="flex items-center gap-2">
                 <div className="flex flex-col">
-                    <span className={`font-medium text-gray-800 text-base ${step.status === 'Completed' ? 'line-through text-gray-500' : ''}`}>
+                    <span className={`font-medium text-gray-800 text-base ${step.status === 'Completed' ? 'text-gray-500' : ''}`}>
                         {step.name}
                     </span>
                     {step.description && (
