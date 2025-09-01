@@ -23,13 +23,13 @@ function ProgressBar({ progress, isOvertime, dueDate, status }) {
     if (!isCompleted) {
         if (isOverdue && isOvertime) {
             displayText = 'OVERDUE';
-            textClass = 'text-red-500 animate-blink';
+            textClass = 'text-red-500';
         } else if (isOverdue) {
             displayText = 'OVERDUE';
-            textClass = 'text-red-500 animate-blink';
+            textClass = 'text-red-500 ';
         } else if (isOvertime) {
             displayText = 'OVER TIME';
-            textClass = 'text-red-500 animate-blink';
+            textClass = 'text-red-500 ';
         }
     }
 
