@@ -6,7 +6,7 @@ export const msalConfig = {
     clientId: "76064fb0-a595-4e08-8f74-48fdd4bcd5d0",
     authority: "https://login.microsoftonline.com/0eadb77e-42dc-47f8-bbe3-ec2395e0712c",
   redirectUri: "https://qtrackly-fbf5d-22ea3.web.app",
-    // redirectUri: " http://localhost:5173/",
+    //redirectUri: " http://localhost:5173/",
 
   },
   cache: {

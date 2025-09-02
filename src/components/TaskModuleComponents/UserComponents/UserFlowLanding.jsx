@@ -469,17 +469,17 @@ const LandingPage = () => {
           {[
             {
               quote: 'QTrackly’s dependency tracking has streamlined our project workflows like never before.',
-              author: '',
+              author: 'Sridevi Moturi',
               role: 'Project Manager',
             },
             {
               quote: 'The performance insights help me keep my team on track and address bottlenecks early.',
-              author: '',
+              author: 'Anmol Singh',
               role: 'Team Lead',
             },
             {
               quote: 'Timesheet tracking makes workload planning effortless and transparent.',
-              author: '',
+              author: 'Gopi',
               role: 'Product Owner',
             },
           ].map((testimonial, index) => (
